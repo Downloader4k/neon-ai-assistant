@@ -4,6 +4,43 @@ import { prisma } from '../services/db/prisma';
 import { logger } from '../utils/logger';
 const router = Router();
 
+// POST /api/memory
+// Create a new memory entry
+router.post('/', async (req, res) => {
+    try {
+        const { userId, content, type, importanceScore } = req.body;
+
+        if (!userId || !content) {
+            res.status(400).json({ error: 'userId und content sind erforderlich' });
+            return;
+        }
+
+        const entry = await prisma.memoryEntry.create({
+            data: {
+                userId,
+                type: (type || 'FACT').toUpperCase(),
+                content,
+                importanceScore: importanceScore || 0.7,
+                isActive: true,
+            },
+        });
+
+        // Generate embedding
+        try {
+            const { embeddingService } = await import('../services/memory/EmbeddingService');
+            const embedding = await embeddingService.embed(content);
+            await embeddingService.storeEmbedding(entry.id, embedding);
+        } catch (err) {
+            logger.warn('Failed to generate embedding for new memory', { id: entry.id });
+        }
+
+        res.json({ success: true, id: entry.id });
+    } catch (error) {
+        logger.error('Failed to create memory', error);
+        res.status(500).json({ error: 'Failed to create memory' });
+    }
+});
+
 // GET /api/memory/:userId
 // Fetch memories with filters
 router.get('/:userId', async (req, res) => {

@@ -23,10 +23,11 @@ export class ClaudeService {
     private maxTokens: number = 8192;
 
     constructor() {
-        // ... (existing constructor)
         const apiKey = process.env.ANTHROPIC_API_KEY;
         if (!apiKey) {
-            throw new Error('ANTHROPIC_API_KEY is not set in environment variables');
+            logger.warn('ANTHROPIC_API_KEY not set — Claude service will not be available');
+            this.client = null as any;
+            return;
         }
 
         this.client = new Anthropic({
@@ -34,6 +35,10 @@ export class ClaudeService {
         });
 
         logger.info('Claude service initialized successfully');
+    }
+
+    get isAvailable(): boolean {
+        return this.client !== null;
     }
 
     /**

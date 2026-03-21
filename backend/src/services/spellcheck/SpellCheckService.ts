@@ -1,3 +1,4 @@
+// @ts-ignore -- no type declarations available
 import nspell from 'nspell';
 import * as fs from 'fs';
 import * as path from 'path';

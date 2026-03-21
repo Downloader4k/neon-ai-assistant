@@ -45,7 +45,7 @@ export class PluginManager {
     }
 
     /**
-     * Load a plugin
+     * Load a plugin by its registered ID
      */
     async loadPlugin(pluginId: string) {
         const plugin = this.plugins.get(pluginId);
@@ -53,26 +53,29 @@ export class PluginManager {
             throw new Error(`Plugin ${pluginId} not found`);
         }
 
-        try {
-            // Dynamic import (in real implementation)
-            // const module = await import(plugin.entryPoint);
-            // const instance = new module.default(context);
+        if (this.loadedPlugins.has(pluginId)) {
+            console.log(`Plugin ${plugin.name} already loaded`);
+            return this.loadedPlugins.get(pluginId);
+        }
 
-            // For now, placeholder
-            const instance = {
-                onLoad: () => console.log(`${plugin.name} loaded`),
-                onUnload: () => console.log(`${plugin.name} unloaded`),
-            };
+        try {
+            const module = await import(plugin.entryPoint);
+            const PluginClass = module.default || module;
+
+            const instance = typeof PluginClass === 'function'
+                ? new PluginClass()
+                : PluginClass;
 
             this.loadedPlugins.set(pluginId, instance);
 
-            if (instance.onLoad) {
+            if (typeof instance.onLoad === 'function') {
                 await instance.onLoad();
             }
 
+            console.log(`Plugin loaded: ${plugin.name} v${plugin.version}`);
             return instance;
         } catch (error) {
-            console.error(`Failed to load plugin ${pluginId}`, error);
+            console.error(`Failed to load plugin ${pluginId}:`, error);
             throw error;
         }
     }

@@ -1,4 +1,4 @@
-import { Message } from '../store/useAppStore';
+import { Message, useAppStore } from '../store/useAppStore';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -33,14 +33,45 @@ function MessageBubble({ message }: MessageBubbleProps) {
         }
     }, [message.content]);
 
-    const handleDelete = () => {
-        // TODO: Implement delete functionality
-        console.log('Delete message:', message.id);
+    const [saveSuccess, setSaveSuccess] = useState(false);
+    const [deleteSuccess, setDeleteSuccess] = useState(false);
+
+    const handleDelete = async () => {
+        try {
+            const conv = useAppStore.getState().currentConversation;
+            if (!conv) return;
+            // Remove message from local state
+            const updatedMessages = conv.messages.filter(m => m.id !== message.id);
+            useAppStore.getState().setCurrentConversation({
+                ...conv,
+                messages: updatedMessages,
+            });
+            setDeleteSuccess(true);
+            setTimeout(() => setDeleteSuccess(false), 1500);
+        } catch (err) {
+            console.error('Delete failed:', err);
+        }
     };
 
-    const handleSaveToMemory = () => {
-        // TODO: Implement save to memory
-        console.log('Save to memory:', message.content);
+    const handleSaveToMemory = async () => {
+        try {
+            const res = await fetch('/api/memory', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: 'default-user',
+                    content: message.content,
+                    type: 'FACT',
+                    importanceScore: 0.8,
+                }),
+            });
+            if (res.ok) {
+                setSaveSuccess(true);
+                setTimeout(() => setSaveSuccess(false), 2000);
+            }
+        } catch (err) {
+            console.error('Save to memory failed:', err);
+        }
     };
 
     return (
@@ -215,7 +246,11 @@ function MessageBubble({ message }: MessageBubbleProps) {
                                             className="p-1.5 hover:bg-bg-hover rounded-md transition-colors group/btn"
                                             title="In Erinnerungen speichern"
                                         >
-                                            <Bookmark className="w-4 h-4 text-text-secondary group-hover/btn:text-accent-primary transition-colors" />
+                                            {saveSuccess ? (
+                                                <Check className="w-4 h-4 text-green-400" />
+                                            ) : (
+                                                <Bookmark className="w-4 h-4 text-text-secondary group-hover/btn:text-accent-primary transition-colors" />
+                                            )}
                                         </button>
                                     )}
                                     <button
@@ -226,7 +261,11 @@ function MessageBubble({ message }: MessageBubbleProps) {
                                         className="p-1.5 hover:bg-bg-hover rounded-md transition-colors group/btn"
                                         title="Nachricht löschen"
                                     >
-                                        <Trash2 className="w-4 h-4 text-text-secondary group-hover/btn:text-red-400 transition-colors" />
+                                        {deleteSuccess ? (
+                                            <Check className="w-4 h-4 text-red-400" />
+                                        ) : (
+                                            <Trash2 className="w-4 h-4 text-text-secondary group-hover/btn:text-red-400 transition-colors" />
+                                        )}
                                     </button>
                                 </div>
                             </div>

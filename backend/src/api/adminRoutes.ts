@@ -1,6 +1,21 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { simpleInterviewService } from '../services/learning/SimpleInterviewService';
 import { logger } from '../utils/logger';
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+    fileFilter: (_req, file, cb) => {
+        const allowed = ['.txt', '.md', '.json', '.csv'];
+        const ext = file.originalname.toLowerCase().slice(file.originalname.lastIndexOf('.'));
+        if (allowed.includes(ext)) {
+            cb(null, true);
+        } else {
+            cb(new Error(`Dateityp nicht erlaubt: ${ext}. Erlaubt: ${allowed.join(', ')}`));
+        }
+    },
+});
 
 const router = Router();
 
@@ -9,28 +24,30 @@ router.get('/stats', async (_req, res) => {
     try {
 
 
-        // Fetch real stats
         const { prisma } = await import('../services/db/prisma');
         const totalMemories = await prisma.memoryEntry.count({ where: { isActive: true } });
         const totalMessages = await prisma.message.count();
+        const totalConversations = await prisma.conversation.count();
+        const totalUsers = await prisma.user.count();
 
-        // Mock other stats for now as we don't track them granularly yet
+        // API usage stats (real data from api_usage table)
+        const apiUsage = await prisma.apiUsage.aggregate({
+            _sum: { tokensUsed: true, cost: true },
+            _count: true,
+        });
+
         res.json({
             database: {
-                totalRecords: totalMemories + totalMessages,
-                memoryUsage: 'Unknown', // Could calculate from DB file size
-                connections: 1,
+                totalMemories,
+                totalMessages,
+                totalConversations,
+                totalUsers,
             },
             api: {
-                totalRequests: 0, // specific tracking not implemented
-                avgResponseTime: '0ms',
-                errorRate: '0%',
+                totalRequests: apiUsage._count || 0,
+                totalTokens: apiUsage._sum.tokensUsed || 0,
+                totalCostUsd: apiUsage._sum.cost || 0,
             },
-            cache: {
-                hitRate: 'N/A',
-                size: '0 MB',
-                entries: 0,
-            }
         });
     } catch (error) {
         logger.error('Error getting admin stats', { error });
@@ -41,13 +58,21 @@ router.get('/stats', async (_req, res) => {
 // POST /api/admin/reindex-all
 router.post('/reindex-all', async (_req, res) => {
     try {
-        logger.info('ADMIN: Reindex triggered (ChromaDB)');
-        // Trigger ChromaDB reindexing if needed, or just return success
-        // For now, as we don't have a global reindex function exposed here:
-        res.json({ success: true, message: 'Reindexing not required for ChromaDB (auto-managed)' });
+        logger.info('ADMIN: Reindex triggered');
+
+        const { semanticSearchService } = await import('../services/search/SemanticSearchService');
+        const result = await semanticSearchService.reindexAllMessages();
+
+        logger.info('ADMIN: Reindex completed', result);
+        res.json({
+            success: true,
+            message: `Reindex abgeschlossen: ${result.success} Nachrichten indexiert, ${result.failed} fehlgeschlagen`,
+            indexed: result.success,
+            failed: result.failed,
+        });
     } catch (error) {
         logger.error('Error reindexing', { error });
-        res.status(500).json({ error: 'Reindex failed' });
+        res.status(500).json({ error: 'Reindex fehlgeschlagen' });
     }
 });
 
@@ -68,13 +93,85 @@ router.post('/reset-memory', async (_req, res) => {
     }
 });
 
-// POST /api/admin/import (Existing file upload)
-// This was previously handled? AdminPanel uses /api/admin/import
-router.post('/import', async (_req, res) => {
-    // Currently AdminPanel sends files. We need multer or similar to handle this.
-    // For now, let's just return an error or basic success if we don't want to implement file upload right now.
-    // The user didn't ask for file upload fix, just memory reset.
-    res.status(501).json({ error: 'File upload not yet implemented in admin routes' });
+// POST /api/admin/import — File upload for document import
+router.post('/import', upload.array('files', 10), async (req, res) => {
+    try {
+        const files = req.files as Express.Multer.File[];
+        if (!files || files.length === 0) {
+            res.status(400).json({ error: 'Keine Dateien hochgeladen' });
+            return;
+        }
+
+        const userId = (req.body.userId as string) || 'default-user';
+        const { prisma } = await import('../services/db/prisma');
+
+        // Ensure user exists
+        const { ensureDefaultUser } = await import('../services/db/userService');
+        await ensureDefaultUser();
+        let totalImported = 0;
+
+        for (const file of files) {
+            const text = file.buffer.toString('utf-8');
+            const ext = file.originalname.toLowerCase().slice(file.originalname.lastIndexOf('.'));
+
+            let lines: string[] = [];
+
+            if (ext === '.csv') {
+                // CSV: skip header, each row becomes an entry
+                const rows = text.split('\n').filter(l => l.trim());
+                lines = rows.slice(1); // skip header
+            } else if (ext === '.json') {
+                // JSON: try array of strings or objects with "content" field
+                try {
+                    const parsed = JSON.parse(text);
+                    if (Array.isArray(parsed)) {
+                        lines = parsed.map(item =>
+                            typeof item === 'string' ? item : (item.content || item.text || JSON.stringify(item))
+                        );
+                    } else if (parsed.content) {
+                        lines = [parsed.content];
+                    } else {
+                        lines = [text];
+                    }
+                } catch {
+                    lines = [text];
+                }
+            } else {
+                // TXT, MD: split by double newlines (paragraphs) or single lines
+                lines = text.split(/\n{2,}/).filter(l => l.trim().length > 5);
+                if (lines.length <= 1) {
+                    lines = text.split('\n').filter(l => l.trim().length > 5);
+                }
+            }
+
+            for (const line of lines) {
+                const cleanLine = line.replace(/^[-*]\s*/, '').trim();
+                if (cleanLine.length < 3) continue;
+
+                await prisma.memoryEntry.create({
+                    data: {
+                        userId,
+                        type: 'FACT',
+                        content: cleanLine,
+                        importanceScore: 0.7,
+                        isActive: true,
+                    },
+                });
+                totalImported++;
+            }
+
+            logger.info(`Admin import: ${file.originalname} -> ${lines.length} entries`);
+        }
+
+        res.json({
+            success: true,
+            message: `${totalImported} Eintraege aus ${files.length} Datei(en) importiert`,
+            count: totalImported,
+        });
+    } catch (error: any) {
+        logger.error('Admin import failed', { error });
+        res.status(500).json({ error: error.message || 'Import fehlgeschlagen' });
+    }
 });
 
 // POST /api/admin/extract-memories - Manual Memory Extraction Trigger

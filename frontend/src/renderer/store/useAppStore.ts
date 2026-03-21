@@ -53,8 +53,11 @@ interface AppState {
     renameConversation: (id: string, newTitle: string) => void;
 }
 
-const SOCKET_URL = 'http://localhost:3001';
-const USER_ID = 'default-user'; // TODO: Implement proper user management
+// Auto-detect backend URL: use current hostname for network access
+const SOCKET_URL = window.location.port === '5173'
+    ? `http://${window.location.hostname}:3001`  // Dev: Vite proxy or direct
+    : window.location.origin;                     // Prod: same origin
+const USER_ID = 'default-user';
 
 export const useAppStore = create<AppState>((set, get) => ({
     socket: null,
