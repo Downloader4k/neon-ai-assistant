@@ -1,363 +1,247 @@
-# 🌟 NEON AI Assistant
+# NEON AI Assistant
 
-> **Ein vollständig lokaler, intelligenter KI-Assistent mit Multi-Layer Memory System**
+> Persoenlicher KI-Assistent mit Hybrid-Routing (Claude + Ollama), 5-Layer Memory System und Netzwerk-Zugriff
 
-![Status](https://img.shields.io/badge/Status-Phase%207%20Complete-success)
-![License](https://img.shields.io/badge/License-MIT-blue)
 ![Node](https://img.shields.io/badge/Node-20+-green)
+![TypeScript](https://img.shields.io/badge/TypeScript-5+-blue)
+![License](https://img.shields.io/badge/License-MIT-blue)
 
-NEON ist ein Desktop-basierter AI Assistant, der Claude AI und lokale LLMs (Llama 3.1) kombiniert, um intelligente, kontextbewusste Konversationen mit einem umfassenden Erinnerungssystem zu ermöglichen.
+NEON ist eine Web-App, die Claude AI und lokale LLMs (Ollama/Gemma3) kombiniert. Das System routet Anfragen intelligent zwischen Cloud und lokal, merkt sich Kontext ueber ein 5-schichtiges Gedaechtnissystem und ist von jedem Geraet im Netzwerk erreichbar.
 
----
-
-## ✨ Features
-
-### 🎯 Core Features (Phasen 0-7)
-
-- **💬 Intelligenter Chat** - Nahtlose Konversation mit KI
-- **🧠 Hybrid AI** - Automatisches Routing zwischen Claude (komplex) und Llama (schnell/privat)
-- **🔍 Semantische Suche** - Vector-basierte Suche durch alle Nachrichten (Ctrl+K)
-- **🧠 Multi-Layer Memory System**
-  - Working Memory (Stunden)
-  - Short-term Memory (Tage)
-  - Long-term Memory (permanent)
-  - Episodic Memory (Ereignisse)
-  - Semantic Memory (Wissen)
-- **📊 Memory Dashboard** - Visualisierung & Management aller Memories
-- **⚙️ Admin Panel** - Dokument-Import, Batch-Operationen, Reindexing
-- **🎨 Modern UI** - Electron Desktop App mit React, Tailwind & Framer Motion
-
-### 🔧 Technische Highlights
-
-- **Automatische Memory Consolidation** - Intelligentes Zusammenführen ähnlicher Erinnerungen
-- **Importance Scoring** - KI-gestütztes Bewerten der Wichtigkeit von Informationen
-- **Memory Decay** - Natürliches "Vergessen" unwichtiger Informationen über Zeit
-- **Context Window Building** - Automatisches Zusammenstellen relevanter Erinnerungen
-- **Real-time WebSocket** - Streaming AI responses
-- **Local-First** - Privatsphäre durch lokale Llama-Option
+**Kein Electron** — laeuft direkt im Browser (Chrome, Firefox, Safari, Handy).
 
 ---
 
-## 🚀 Quick Start
+## Features
+
+- **Hybrid AI Router** — 5-Stufen-Orchestrator routet automatisch zwischen Claude (komplex) und Ollama (schnell/privat)
+- **5-Layer Memory** — Working, Short-Term, Long-Term, Episodic, Semantic mit Importance Scoring, Decay und Consolidation
+- **Semantische Suche** — Vektor-basierte Suche ueber alle Konversationen (Ctrl+K)
+- **Netzwerk-Zugriff** — Erreichbar von jedem Geraet im LAN (PC, Handy, Tablet)
+- **Echtzeit-Streaming** — Token-fuer-Token Antworten via WebSocket
+- **Lernmodus** — Interview-Sessions zur Persoenlichkeitsentwicklung
+- **Web-Suche** — DuckDuckGo + Wikipedia Integration
+- **Wetter** — OpenWeatherMap Integration
+- **Wissensbasis (RAG)** — Dokumente importieren und per KI durchsuchen
+- **Emotion Tracking** — Stimmungserkennung in Gespraechen
+- **Admin Panel** — Memory-Management, Extraktion, API-Kosten-Tracking
+
+---
+
+## Quick Start
 
 ### Voraussetzungen
 
-- **Node.js 20+** - [Download](https://nodejs.org/)
-- **Docker Desktop** - [Download](https://www.docker.com/products/docker-desktop/)
-- **Ollama** - [Download](https://ollama.com/download)
+- [Node.js 20+](https://nodejs.org/)
+- [Ollama](https://ollama.com/download) (fuer lokale KI)
+- Optional: [Docker Desktop](https://www.docker.com/products/docker-desktop/) (fuer PostgreSQL/Redis/ChromaDB)
 
 ### Installation
 
-```powershell
-# 1. Projekt klonen / navigieren
-cd C:\Users\Thorben\.gemini\antigravity\scratch\neon-ai-assistant
+```bash
+# 1. Repository klonen
+git clone https://github.com/Downloader4k/neon-ai-assistant.git
+cd neon-ai-assistant
 
-# 2. Dependencies
+# 2. Dependencies installieren
 npm install
 
-# 3. Docker starten
-docker compose up -d
+# 3. Backend konfigurieren
+cp backend/.env.example backend/.env
+# -> ANTHROPIC_API_KEY eintragen
 
-# 4. Datenbank
+# 4. Datenbank initialisieren
 cd backend
-npx prisma migrate deploy
 npx prisma generate
-
-# 5. Ollama Model
-ollama pull gemma3:4b
-
-# 6. Starten!
+npx prisma migrate deploy
 cd ..
+
+# 5. Ollama Modell laden
+ollama pull gemma3:4b
+# Oder fuer bessere Qualitaet (braucht 12GB VRAM):
+# ollama pull gemma3:12b
+
+# 6. Starten
 npm run dev
 ```
 
-Fertig! 🎉 NEON läuft jetzt als Electron App.
+### Zugriff
+
+```
+Lokal:     http://localhost:5173
+Netzwerk:  http://<deine-ip>:5173   (von jedem Geraet im LAN)
+Backend:   http://localhost:3001
+```
 
 ---
 
-## 📁 Projektstruktur
+## Tech Stack
+
+### Frontend (Browser)
+React 18 | TypeScript | Vite | Tailwind CSS | Zustand | Socket.io | Framer Motion
+
+### Backend
+Node.js | Express | TypeScript | Prisma | Socket.io | Winston
+
+### KI & ML
+Claude (Anthropic SDK) | Ollama/Gemma3 | Transformers.js (Embeddings) | ChromaDB (Vektoren)
+
+### Infrastruktur
+SQLite (Default) | PostgreSQL (Optional) | Redis (Optional) | Docker Compose
+
+---
+
+## Projektstruktur
 
 ```
 neon-ai-assistant/
-├── backend/                 # Express.js Backend
-│   ├── prisma/             # Database schema & migrations
+├── backend/                # Express.js Server (Port 3001)
 │   ├── src/
-│   │   ├── api/            # REST + WebSocket routes
-│   │   ├── services/
-│   │   │   ├── ai/         # Claude + Ollama integration
-│   │   │   ├── router/     # Intelligent AI routing
-│   │   │   ├── memory/     # Memory system
-│   │   │   ├── search/     # Semantic search
-│   │   │   └── chroma/     # ChromaDB integration
-│   │   └── utils/          # Logger, helpers
-│   └── package.json
+│   │   ├── api/            # REST Routes + WebSocket
+│   │   ├── services/       # 35+ Business Logic Services
+│   │   │   ├── router/     # AI Routing (5-Stage Orchestrator)
+│   │   │   ├── memory/     # 5-Layer Memory System
+│   │   │   ├── search/     # Semantische Suche (ChromaDB)
+│   │   │   ├── claude/     # Claude API
+│   │   │   ├── ollama/     # Ollama Integration
+│   │   │   └── ...
+│   │   └── utils/
+│   └── prisma/             # Datenbank-Schema
 │
-├── frontend/                # Electron + React App
+├── frontend/               # React Web-App (Vite)
 │   ├── src/
-│   │   ├── main/           # Electron main process
-│   │   ├── preload/        # Preload scripts
-│   │   ├── renderer/       # React UI
-│   │   │   ├── components/ # UI components
-│   │   │   ├── store/      # Zustand state management
-│   │   │   └── styles/     # Tailwind CSS
-│   │   └── index.html
-│   └── package.json
+│   │   ├── components/     # 23+ UI Komponenten
+│   │   ├── store/          # Zustand State Management
+│   │   ├── services/       # STT, TTS
+│   │   └── styles/
+│   └── vite.config.ts
 │
-├── shared/                  # Shared types
-│   └── types/
-│
-├── docker-compose.yml       # PostgreSQL, Redis, ChromaDB
-├── SETUP.md                 # Detailed setup guide
-└── README.md                # This file
+├── shared/types/           # Geteilte TypeScript-Typen
+├── docker/                 # Docker Compose (PostgreSQL, Redis, ChromaDB)
+├── scripts/                # Wartungs-Skripte
+└── KONZEPT_V2.md           # Detailliertes Konzeptdokument
 ```
 
 ---
 
-## 🧠 Memory System
+## Memory System
 
-NEON's einzigartiges **5-Layer Memory System**:
+| Schicht | Lebensdauer | Zweck |
+|---------|-------------|-------|
+| **Working** | 1-4 Stunden | Aktive Session |
+| **Short-Term** | 1-7 Tage | Kuerzliche Infos |
+| **Long-Term** | Permanent | Wichtige Fakten |
+| **Episodic** | Variabel | Ereignisse |
+| **Semantic** | Permanent | Strukturiertes Wissen |
 
-| Type | Dauer | Verwendung |
-|------|-------|------------|
-| **Working** | 1-4 Stunden | Aktuelle Konversation |
-| **Short-term** | 1-7 Tage | Kürzlich besprochenes |
-| **Long-term** | Permanent | Wichtige Informationen |
-| **Episodic** | Variabel | Ereignisse & Erlebnisse |
-| **Semantic** | Permanent | Fakten & Wissen |
-
-### Importance Scoring
-
-Memories werden automatisch bewertet basierend auf:
-- Länge & Komplexität
-- Code-Blöcke & Fragen
-- Keywords ("wichtig", "merke", etc.)
-- User-Feedback
-- Zugriffshäufigkeit
-
-### Automatische Consolidation
-
-- **Ähnliche Memories zusammenführen** - Reduziert Redundanz
-- **Promotion zu Long-term** - Wichtige Short-term → Long-term
-- **Memory Decay** - Unwichtiges vergessen über Zeit
-- **Expiration** - Automatisches Ablaufen nach Zeit
+Automatische Consolidation, Importance Scoring, Memory Decay und Promotion.
 
 ---
 
-## 🔌 API Übersicht
+## AI Router
 
-### REST Endpoints
+5-Stufen Entscheidungsprozess:
+
+1. **Domain-Klassifikation** — Emotional? -> Ollama. Komplex? -> weiter
+2. **Komplexitaetsbewertung** — Score < 70? -> Ollama
+3. **Self-Confidence** — Ollama sicher genug? -> Ollama
+4. **Depth Threshold** — Tiefe noetig? -> Claude
+5. **Execution** — Antwort streamen
+
+Konfigurierbar via `.env`:
+```env
+ENABLE_ORCHESTRATOR=true
+CLAUDE_THRESHOLD=0.85
+COMPLEXITY_THRESHOLD=70
+```
+
+---
+
+## Konfiguration
+
+### Backend (.env)
+
+```env
+# Server
+PORT=3001
+HOST=0.0.0.0
+
+# KI
+ANTHROPIC_API_KEY=sk-ant-api03-...
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=gemma3:4b
+
+# Datenbank
+DATABASE_URL="file:./prisma/neon.db"
+
+# Router
+ENABLE_ORCHESTRATOR=true
+CLAUDE_THRESHOLD=0.85
+```
+
+---
+
+## Development
 
 ```bash
-# Health Check
-GET /api/health
+# Alles starten (Backend + Frontend parallel)
+npm run dev
 
-# Semantic Search
-GET /api/search?q=query&limit=10
-POST /api/search/reindex
+# Nur Backend
+npm run dev:backend
 
-# Memory System
-POST /api/memory
-GET /api/memory/:userId
-POST /api/memory/:userId/retrieve
-POST /api/memory/:userId/consolidate
-GET /api/memory/:userId/stats
+# Nur Frontend
+npm run dev:frontend
 
-# AI Config
-GET /api/config
-POST /api/config
+# Build (Production)
+npm run build
+
+# Datenbank
+cd backend
+npx prisma studio       # Visual DB Browser
+npx prisma migrate dev  # Neue Migration
 ```
 
-### WebSocket Events
+---
+
+## API
+
+### REST (Auszug)
+
+```
+GET  /api/health                    # System-Status
+GET  /api/search?q=query            # Semantische Suche
+GET  /api/memory/:userId            # Erinnerungen
+POST /api/memory/:userId/retrieve   # Relevante Memories
+GET  /api/admin/stats               # System-Statistiken
+GET  /api/admin/usage               # API-Kosten
+```
+
+### WebSocket
 
 ```typescript
-// Client → Server
+// Nachricht senden
 socket.emit('user-message', { message, conversationId, userId })
 
-// Server → Client
+// Streaming-Antwort empfangen
 socket.on('ai-response-chunk', ({ chunk, provider }))
-socket.on('ai-response-complete', ({ conversationId, provider }))
-socket.on('typing-indicator', ({ isTyping }))
+socket.on('ai-response-complete', ({ conversationId }))
 ```
 
 ---
 
-## ⚙️ Konfiguration
+## Dokumentation
 
-### AI Router
-
-Im `.env` (Backend):
-
-```env
-# Komplexitätsschwelle (0-1)
-# Höher = mehr Claude, Niedriger = mehr Ollama
-AI_ROUTER_COMPLEXITY_THRESHOLD=0.6
-
-# Hybrid-Modus (beide vergleichen)
-AI_ROUTER_HYBRID_MODE=true
-
-# Privacy-Modus (nur Ollama)
-AI_ROUTER_PRIVACY_MODE=false
-```
-
-### Claude API Key
-
-Bereits konfiguriert in `backend/.env`:
-```env
-CLAUDE_API_KEY="sk-ant-api03-..."
-```
-
-### Ollama
-
-```powershell
-# Model-Liste
-ollama list
-
-# Model herunterladen
-ollama pull llama3.1:8b
-
-# Laufendes Model
-ollama ps
-```
+- [KONZEPT_V2.md](./KONZEPT_V2.md) — Vollstaendiges Konzept mit Architektur, Audit und Roadmap
+- [SETUP.md](./SETUP.md) — Detaillierte Setup-Anleitung
+- [AGENT_RULES.md](./AGENT_RULES.md) — Verhaltensregeln des Assistenten
 
 ---
 
-## 🎨 UI Components
+## License
 
-- **ChatInterface** - Hauptchat mit Messages
-- **MessageBubble** - Einzelne Message mit Markdown & Syntax-Highlighting
-- **ChatInput** - Auto-resize Input mit Enter-to-send
-- **SemanticSearch** - Modal für Semantic Search (Ctrl+K)
-- **MemoryDashboard** - Memory-Visualisierung & Stats
-- **AdminPanel** - Daten-Import & Management
+MIT
 
 ---
 
-## 🛠️ Development
-
-### Backend
-
-```powershell
-cd backend
-npm run dev        # Development mit nodemon
-npm run build      # TypeScript build
-npm start          # Production
-```
-
-### Frontend
-
-```powershell
-cd frontend
-npm run dev        # Electron development
-npm run build      # Build app
-npm run package    # Create distributable
-```
-
-### Database
-
-```powershell
-cd backend
-
-# Schema bearbeiten
-# prisma/schema.prisma
-
-# Migration
-npx prisma migrate dev --name beschreibung
-
-# Prisma Studio (Database Browser)
-npx prisma studio
-```
-
----
-
-## 📊 Tech Stack
-
-### Frontend
-- **Electron** - Desktop framework
-- **React 18** - UI library
-- **TypeScript** - Type safety
-- **Vite** - Build tool
-- **Tailwind CSS** - Styling
-- **Framer Motion** - Animations
-- **Zustand** - State management
-- **Socket.io Client** - WebSocket
-- **React Markdown** - MD rendering
-- **Highlight.js** - Syntax highlighting
-
-### Backend
-- **Node.js** - Runtime
-- **Express** - HTTP server
-- **Socket.io** - WebSocket
-- **TypeScript** - Type safety
-- **Prisma** - ORM
-- **PostgreSQL** - Main database
-- **Redis** - Caching
-- **ChromaDB** - Vector database
-- **Transformers.js** - Embeddings (lokaler)
-- **Anthropic SDK** - Claude AI
-- **Ollama** - Local LLM
-- **Winston** - Logging
-
-### DevOps
-- **Docker** - Container (PostgreSQL, Redis, ChromaDB)
-- **Docker Compose** - Orchestration
-
----
-
-## 🗺️ Roadmap
-
-### ✅ Completed (Phasen 0-7)
-- ✅ Phase 0-4: Infrastruktur & Basis-Chat
-- ✅ Phase 5: Semantische Suche
-- ✅ Phase 6: Memory System
-- ✅ Phase 7: Admin Panel & Daten-Import
-
-### 🚧 In Progress
-- Phase 8: Sprach-Input & -Output (Whisper, TTS)
-- Phase 9: Proaktive KI
-- Phase 10: Lernmodus & Persönlichkeit
-
-### 📋 Planned
-- Phase 11: Settings & Customization
-- Phase 12: Code-Tools & Dev-Features
-- Phase 13: Plugin-System
-- Phase 14: System-Integration & Automation
-- Phase 15: Performance-Optimierung
-- Phase 16: Security & Encryption
-- Phase 17: Magic Features 🪄
-
----
-
-## 📖 Dokumentation
-
-- **[SETUP.md](./SETUP.md)** - Detaillierte Setup-Anleitung
-- **[task.md](./task.md)** - Implementierungs-Checkliste
-- **Backend API** - Siehe `backend/src/api/routes.ts`
-- **Prisma Schema** - Siehe `backend/prisma/schema.prisma`
-
----
-
-## 🤝 Contributing
-
-Dieses Projekt ist aktuell ein privates Entwicklungsprojekt. Weitere Informationen folgen.
-
----
-
-## 📝 License
-
-MIT License - siehe [LICENSE](./LICENSE)
-
----
-
-## 🙏 Credits
-
-- **Claude AI** by Anthropic
-- **Llama 3.1** by Meta
-- **Ollama** - Local LLM Runtime
-- **ChromaDB** - Vector Database
-- **Transformers.js** - ML in Node.js
-
----
-
-**Made with ❤️ and AI** 🤖
-
-Bei Fragen oder Problemen siehe [SETUP.md](./SETUP.md) oder erstelle ein Issue.
+Built with Claude AI, Ollama, and TypeScript.

@@ -11,11 +11,24 @@ import { logger } from './utils/logger';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const HOST = process.env.HOST || 'localhost';
+const HOST = process.env.HOST || '0.0.0.0';
 
 // Middleware
-app.use(helmet());
-app.use(cors());
+app.use(helmet({
+    contentSecurityPolicy: false, // Allow inline scripts for dev
+}));
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, curl, etc.)
+        if (!origin) return callback(null, true);
+        // Allow localhost and LAN IPs
+        if (origin.match(/^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$/)) {
+            return callback(null, true);
+        }
+        callback(null, true); // Allow all origins in dev
+    },
+    credentials: true,
+}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public'))); // Serve static files from /public
 app.use(express.urlencoded({ extended: true }));
@@ -37,9 +50,22 @@ app.use('/api/skills/knowledge-base', knowledgeBaseRouter);
 app.use('/api/skills', skillRoutes);
 app.use('/api', apiRoutes);
 
-// Root endpoint
-app.get('/', (_req, res) => {
-    res.send('Neon AI Assistant Backend Running');
+// Serve frontend build (production)
+const frontendDist = path.join(__dirname, '../../frontend/dist');
+app.use(express.static(frontendDist));
+
+// SPA fallback: serve index.html for all non-API routes
+app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
+        return next();
+    }
+    const indexPath = path.join(frontendDist, 'index.html');
+    res.sendFile(indexPath, (err) => {
+        if (err) {
+            // Frontend not built yet — show fallback
+            res.send('NEON AI Assistant — Frontend not built. Run: cd frontend && npm run build');
+        }
+    });
 });
 
 // Create HTTP server
