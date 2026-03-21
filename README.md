@@ -228,6 +228,47 @@ socket.on('ai-response-complete', ({ conversationId }))
 
 ---
 
+## Status der Phasen
+
+### Abgeschlossen
+
+| Phase | Feature | Status |
+|-------|---------|--------|
+| 0-4 | Infrastruktur, Chat, Datenbank, AI-Integration | Fertig |
+| 5 | Semantische Suche (ChromaDB + Embeddings) | Fertig |
+| 6 | 5-Layer Memory System (Consolidation, Decay, Scoring) | Fertig |
+| 7 | Admin Panel (Memory-Management, Extraktion, API-Kosten) | Fertig |
+| 9 | Proaktive KI (Kontext-Monitoring, Vorschlaege) | Fertig |
+| 10 | Lernmodus (Interview-Sessions, Persoenlichkeit) | Fertig |
+| 11 | Settings (KI-Verhalten, Privacy, Appearance) | Fertig |
+| 13 | Plugin-System (Skill-Store, dynamisches Loading) | Fertig |
+
+### Teilweise implementiert
+
+| Phase | Feature | Status | Details |
+|-------|---------|--------|---------|
+| 8 | Voice I/O | Frontend fertig | Browser Web Speech API funktioniert. Backend Whisper noch nicht angebunden |
+| 12 | Code-Tools | Basis fertig | Code-Ausfuehrung mit Guardrails. Erweiterte Dev-Features ausstehend |
+| 14 | Web-Suche & Skills | Basis fertig | DuckDuckGo + Wikipedia + Wetter. Weitere Integrationen geplant |
+| 16 | Security | Basis fertig | Input Sanitization, Helmet, CORS. Auth-System fuer Netzwerk noch ausstehend |
+
+### Geplant
+
+| Phase | Feature | Status |
+|-------|---------|--------|
+| 15 | Performance-Optimierung (GPU-Embeddings, Caching) | Offen |
+| 17 | Magic Features (Emotion Tracking, Predictive, Time Capsules) | Teilweise vorhanden |
+
+### Naechste Schritte
+
+- Auth-System fuer sicheren Netzwerk-Zugriff
+- Responsive Design (Mobile-Optimierung)
+- Multi-Modell-Routing (Code-Modell + Chat-Modell)
+- CI/CD Pipeline (GitHub Actions)
+- Unit Tests fuer Kern-Services
+
+---
+
 ## Dokumentation
 
 - [KONZEPT_V2.md](./KONZEPT_V2.md) — Vollstaendiges Konzept mit Architektur, Audit und Roadmap
