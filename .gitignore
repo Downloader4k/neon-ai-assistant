@@ -1,0 +1,83 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+
+# Production
+dist/
+build/
+out/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Docker
+docker/data/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Prisma
+prisma/migrations/
+
+# Build
+*.tsbuildinfo
+.cache/
+
+# Electron
+release/
+app/dist/
+
+# Backups & Archives
+_archive/
+backup_*/
+frontend_backup_*/
+
+# Memory cache (runtime data)
+memory/
+
+# Uploads (user data)
+backend/data/uploads/
+
+# Debug files
+debug_*.txt
+debug_*.js
+debug_*.ts
+
+# Backup files
+*.bak
+
+# Claude settings
+.claude/
+
+# Package lock (optional - remove if you want deterministic installs)
+# package-lock.json

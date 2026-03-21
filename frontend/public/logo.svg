@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#1e1e1e"/>
+      <stop offset="100%" stop-color="#0a0a0a"/>
+    </radialGradient>
+    <linearGradient id="starGrad" x1="10%" y1="0%" x2="90%" y2="100%">
+      <stop offset="0%" stop-color="#ffc333"/>
+      <stop offset="100%" stop-color="#ff8800"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="14" result="blur1"/>
+      <feGaussianBlur stdDeviation="6" result="blur2"/>
+      <feMerge>
+        <feMergeNode in="blur1"/>
+        <feMergeNode in="blur2"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="subtleGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="80" fill="url(#bgGrad)"/>
+
+  <!-- Subtle outer ring -->
+  <rect width="512" height="512" rx="80" fill="none" stroke="#f9ab00" stroke-width="2" opacity="0.25"/>
+
+  <!-- Inner glow ring -->
+  <rect x="8" y="8" width="496" height="496" rx="74" fill="none" stroke="#f9ab00" stroke-width="1" opacity="0.1"/>
+
+  <!-- Main sparkle star - scaled from 24x24, centered at 256,256, scale=14 -->
+  <!-- transform: point(x,y) => ((x-12)*14+256, (y-12)*14+256) -->
+  <g transform="translate(256 256) scale(14) translate(-12 -12)" filter="url(#glow)">
+    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"
+          fill="url(#starGrad)"/>
+  </g>
+
+  <!-- Small accent star (top-right) - same transform -->
+  <g transform="translate(256 256) scale(14) translate(-12 -12)" filter="url(#subtleGlow)">
+    <path d="M19 3 L18.5 5.5 L16 6 L18.5 6.5 L19 9 L19.5 6.5 L22 6 L19.5 5.5 Z"
+          fill="#ffc333"/>
+  </g>
+</svg>

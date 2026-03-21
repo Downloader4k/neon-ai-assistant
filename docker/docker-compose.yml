@@ -1,0 +1,66 @@
+# Docker-Services deaktiviert - Projekt nutzt jetzt lokale Alternativen:
+# - SQLite statt PostgreSQL (via Prisma)
+# - In-Memory/JSON statt Redis (nicht benötigt)
+# - Local JSON Fallback statt ChromaDB
+#
+# Original docker-compose.yml (deaktiviert):
+#
+# services:
+#   # PostgreSQL - Hauptdatenbank für Konversationen, User-Profile, Messages
+#   postgres:
+#     image: postgres:16-alpine
+#     container_name: neon-postgres
+#     restart: unless-stopped
+#     environment:
+#       POSTGRES_DB: neon_db
+#       POSTGRES_USER: neon
+#       POSTGRES_PASSWORD: neon_password
+#       PGDATA: /var/lib/postgresql/data/pgdata
+#     ports:
+#       - "5432:5432"
+#     volumes:
+#       - ./data/postgres:/var/lib/postgresql/data
+#     healthcheck:
+#       test: ["CMD-SHELL", "pg_isready -U neon"]
+#       interval: 10s
+#       timeout: 5s
+#       retries: 5
+#
+#   # Redis - Cache & Session Management
+#   redis:
+#     image: redis:7-alpine
+#     container_name: neon-redis
+#     restart: unless-stopped
+#     command: redis-server --appendonly yes
+#     ports:
+#       - "6379:6379"
+#     volumes:
+#       - ./data/redis:/data
+#     healthcheck:
+#       test: ["CMD", "redis-cli", "ping"]
+#       interval: 10s
+#       timeout: 5s
+#       retries: 5
+#
+#   # ChromaDB - Vector-Datenbank für Embeddings & Semantische Suche
+#   chromadb:
+#     image: chromadb/chroma:latest
+#     container_name: neon-chromadb
+#     restart: unless-stopped
+#     environment:
+#       CHROMA_SERVER_HOST: 0.0.0.0
+#       CHROMA_SERVER_HTTP_PORT: 8000
+#     ports:
+#       - "8000:8000"
+#     volumes:
+#       - ./data/chromadb:/chroma/chroma
+#     healthcheck:
+#       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+#       interval: 30s
+#       timeout: 10s
+#       retries: 3
+#
+# volumes:
+#   postgres-data:
+#   redis-data:
+#   chromadb-data:

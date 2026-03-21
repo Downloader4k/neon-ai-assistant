@@ -1,0 +1,227 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model APIUsage {
+  id         String   @id @default(uuid())
+  service    String
+  tokensUsed Int
+  cost       Float    @default(0)
+  timestamp  DateTime @default(now())
+  messageId  String?
+
+  @@index([timestamp])
+  @@index([service])
+  @@map("api_usage")
+}
+
+model Conversation {
+  id        String     @id @default(uuid())
+  userId    String
+  title     String
+  type      String     @default("chat")
+  summary   String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  Message[]
+
+  @@index([createdAt])
+  @@index([userId])
+  @@map("conversations")
+}
+
+model Document {
+  id          String   @id @default(uuid())
+  userId      String
+  filename    String
+  path        String
+  mimeType    String
+  size        Int
+  text        String
+  uploadedAt  DateTime @default(now())
+  processed   Boolean  @default(false)
+  embeddingId String?
+
+  @@index([userId])
+  @@map("documents")
+}
+
+model Feedback {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String
+  comment   String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("feedback")
+}
+
+model LearningSession {
+  id           String    @id @default(uuid())
+  userId       String
+  topic        String
+  startedAt    DateTime  @default(now())
+  endedAt      DateTime?
+  notes        String?
+  interactions Int       @default(0)
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("learning_sessions")
+}
+
+model Memory {
+  id               String    @id @default(uuid())
+  userId           String
+  type             String
+  status           String    @default("active")
+  content          String
+  context          String?
+  importance       Float     @default(0.5)
+  accessCount      Int       @default(0)
+  lastAccessedAt   DateTime?
+  createdAt        DateTime  @default(now())
+  expiresAt        DateTime?
+  consolidatedFrom String?
+  relatedMemories  String?
+  tags             String?
+  metadata         String?
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@index([createdAt])
+  @@index([importance])
+  @@index([status])
+  @@index([type])
+  @@index([userId])
+  @@map("memories")
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  role           String
+  content        String
+  modelUsed      String?
+  timestamp      DateTime     @default(now())
+  metadata       String?
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([timestamp])
+  @@index([conversationId])
+  @@map("messages")
+}
+
+model Plugin {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  version     String
+  author      String
+  description String
+  enabled     Boolean  @default(true)
+  config      String?
+  installedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@map("plugins")
+}
+
+model ProactiveMessage {
+  id          String    @id @default(uuid())
+  userId      String
+  type        String
+  content     String
+  trigger     String?
+  generatedAt DateTime  @default(now())
+  deliveredAt DateTime?
+  read        Boolean   @default(false)
+  priority    String    @default("medium")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([read])
+  @@index([userId])
+  @@map("proactive_messages")
+}
+
+model Task {
+  id        String    @id @default(uuid())
+  userId    String
+  content   String
+  status    String
+  dueDate   DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([status])
+  @@index([userId])
+  @@map("tasks")
+}
+
+model UserPreference {
+  id        String   @id @default(uuid())
+  userId    String
+  key       String
+  value     String
+  category  String?
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@map("user_preferences")
+}
+
+model User {
+  id                String               @id @default(uuid())
+  name              String
+  email             String?              @unique
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  preferences       String?
+  conversations     Conversation[]
+  feedback          Feedback[]
+  learningSessions  LearningSession[]
+  memories          Memory[]
+  proactiveMessages ProactiveMessage[]
+  userPreferences   UserPreference[]
+  emotionLogs       EmotionLog[]
+  timeCapsules      TimeCapsule[]
+
+  @@map("users")
+}
+
+model EmotionLog {
+  id         String   @id @default(uuid())
+  userId     String
+  text       String
+  sentiment  String
+  emotions   String   // JSON
+  confidence Float
+  timestamp  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([timestamp])
+  @@map("emotion_logs")
+}
+
+model TimeCapsule {
+  id        String   @id @default(uuid())
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  openAt    DateTime
+  opened    Boolean  @default(false)
+  metadata  String?  // JSON
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([openAt])
+  @@map("time_capsules")
+}

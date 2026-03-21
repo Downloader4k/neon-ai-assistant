@@ -1,0 +1,262 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* NEON Orange Theme - Based on User's HTML */
+    --bg-primary: #0f0f0f;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #252525;
+    --bg-hover: #2a2a2a;
+    --bg-gradient: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+    --bg-card: linear-gradient(135deg, #1a1a1a 0%, #252525 100%);
+
+    /* Global Glow Utilities */
+    --neon-glow: 0 0 10px rgba(249, 171, 0, 0.5);
+    --neon-icon-shadow: drop-shadow(0 0 3px rgba(249, 171, 0, 0.8));
+
+    --text-primary: #e0e0e0;
+    --text-secondary: #999;
+    --text-tertiary: #666;
+
+    --accent-primary: #f9ab00;
+    --accent-secondary: #ff8800;
+    --accent-hover: #ffb820;
+    --accent-light: rgba(249, 171, 0, 0.1);
+    --accent-gradient: linear-gradient(135deg, #f9ab00 0%, #ff8800 100%);
+
+    --border-subtle: #333;
+    --border-medium: #444;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.5);
+    --shadow-orange: 0 0 20px rgba(249, 171, 0, 0.3);
+
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+body {
+    font-family: var(--font-body);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;
+    caret-color: transparent;
+    /* Fix phantom cursor appearing randomly */
+}
+
+#root {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Utility Classes */
+.glassmorphism {
+    background: rgba(26, 26, 26, 0.6);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-subtle);
+}
+
+.smooth-transition {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Button Base Styles */
+button {
+    font-family: var(--font-body);
+    cursor: pointer;
+    border: none;
+    background: none;
+    transition: all 0.2s ease;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Input Base Styles */
+input,
+textarea {
+    font-family: var(--font-body);
+    outline: none;
+    border: none;
+    caret-color: var(--text-primary);
+    /* Restore cursor for inputs */
+}
+
+/* Fix Autocomplete/Autofill background turning white */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px var(--bg-secondary) inset !important;
+    -webkit-text-fill-color: var(--text-primary) !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Completely neutralize input styles */
+.clean-input {
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    /* Let margins handle spacing if needed */
+    margin: 0 !important;
+}
+
+/* Modern Focus Styles */
+/* Modern Focus Styles - Disable global outline as it looks like a 'bar'/cursor to user */
+*:focus-visible {
+    outline: none;
+}
+
+/* Selection */
+::selection {
+    background: var(--accent-light);
+    color: var(--accent-primary);
+}
+
+/* Animation Keyframes */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(-20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.drop-shadow-neon {
+    filter: var(--neon-icon-shadow);
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+/* Emoji Picker Customization */
+/* Emoji Picker Customization */
+.emoji-picker-custom {
+    --epr-bg-color: #252525 !important;
+    --epr-category-label-bg-color: #252525 !important;
+    --epr-text-color: var(--text-primary) !important;
+    --epr-search-input-bg-color: var(--bg-secondary) !important;
+    --epr-search-input-bg-color-active: var(--bg-tertiary) !important;
+    --epr-search-input-text-color: var(--text-primary) !important;
+    --epr-search-border-color: var(--border) !important;
+    --epr-picker-border-color: var(--border) !important;
+    --epr-hover-bg-color: var(--bg-tertiary) !important;
+    --epr-focus-bg-color: var(--bg-tertiary) !important;
+    --epr-category-icon-active-color: var(--primary) !important;
+    --epr-marker-color: var(--primary) !important;
+    --epr-highlight-color: var(--primary) !important;
+    --epr-skin-tone-picker-menu-color: var(--primary) !important;
+}
+
+/* Force override for search input to prevent black background */
+.emoji-picker-custom input.epr-search,
+.emoji-picker-custom input[type="text"] {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    transition: all 0.2s ease;
+}
+
+.emoji-picker-custom input.epr-search:focus,
+.emoji-picker-custom input.epr-search:active,
+.emoji-picker-custom input[type="text"]:focus,
+.emoji-picker-custom input[type="text"]:active {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--primary) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 1px var(--primary-alpha) !important;
+}
+
+
+
+/* ULTRA AGGRESSIVE OVERRIDE FOR CATEGORY ICONS */
+/* FINAL ROBUST OVERRIDE FOR CATEGORY ICONS (Background-Image Strategy) */
+.emoji-picker-custom button.epr-cat-btn.epr-active,
+.emoji-picker-custom button.epr-cat-btn:hover,
+.emoji-picker-custom button.epr-cat-btn:focus,
+.emoji-picker-custom button.epr-cat-btn[aria-selected="true"] {
+    /* Apply filter to turn the blue background-icon into yellow (#f9ab00) */
+    filter: brightness(0) saturate(100%) invert(62%) sepia(77%) saturate(2331%) hue-rotate(1deg) brightness(101%) contrast(106%) !important;
+    opacity: 1 !important;
+}
+
+/* Indicator Line */
+.emoji-picker-custom .epr-active-category-indicator,
+.emoji-picker-custom .epr-category-nav .epr-active::after {
+    background-color: var(--primary) !important;
+}
+
+/* Indicator Line */
+.emoji-picker-custom .epr-active-category-indicator,
+.emoji-picker-custom .epr-category-nav .epr-active::after {
+    background-color: var(--primary) !important;
+}

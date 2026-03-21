@@ -1,0 +1,386 @@
+// NEON Memory System - Complete Schema
+// 5-Layer Architecture: Working → Short-Term → Long-Term → Episodic → Semantic
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// USERS & BASE MODELS
+// ─────────────────────────────────────────────────────────────
+
+model User {
+  id                String               @id @default(uuid())
+  name              String
+  email             String?              @unique
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  preferences       String?              // JSON
+
+  conversations     Conversation[]
+  userPreferences   UserPreference[]
+  feedback          Feedback[]
+  proactiveMessages ProactiveMessage[]
+
+  @@map("users")
+}
+
+model UserPreference {
+  id        String   @id @default(uuid())
+  userId    String
+  key       String
+  value     String
+  category  String?
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@map("user_preferences")
+}
+
+// ─────────────────────────────────────────────────────────────
+// SHORT-TERM MEMORY (Conversations)
+// ─────────────────────────────────────────────────────────────
+
+model Conversation {
+  id              String    @id @default(uuid())
+  userId          String
+  sessionId       String    // Links messages in a session
+  title           String?
+  type            String    @default("chat")  // chat, interview
+  summary         String?   // Generated after session end
+  importanceScore Float     @default(0.0)
+  processed       Boolean   @default(false)   // Extracted to LTM?
+  createdAt       DateTime  @default(now())
+  endedAt         DateTime? // Null if still active
+  updatedAt       DateTime  @updatedAt
+
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages    Message[]
+  extractions MemoryExtraction[]
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([createdAt])
+  @@index([processed])
+  @@map("conversations")
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  conversationId String
+  role           String   // USER | ASSISTANT | SYSTEM
+  content        String
+  modelUsed      String?
+  timestamp      DateTime @default(now())
+  metadata       String?  // JSON
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([timestamp])
+  @@map("messages")
+}
+
+// ─────────────────────────────────────────────────────────────
+// LONG-TERM MEMORY (The Core)
+// ─────────────────────────────────────────────────────────────
+
+model MemoryEntry {
+  id                 String    @id @default(uuid())
+  userId             String    @default("default-user")
+  type               String    // FACT | PREFERENCE | PROJECT | INSTRUCTION | KNOWLEDGE
+  content            String    // The text content
+  summary            String?   // Short summary for context budget
+  importanceScore    Float     @default(0.5)
+  accessCount        Int       @default(0)
+  lastAccessedAt     DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  expiresAt          DateTime? // Null = never expire
+  isActive           Boolean   @default(true)
+  sourceExtractionId String?
+
+  tags            MemoryTag[]
+  embeddings      MemoryEmbedding[]
+  sourceExtraction MemoryExtraction? @relation(fields: [sourceExtractionId], references: [id])
+  relationsFrom   MemoryRelation[]  @relation("fromMemory")
+  relationsTo     MemoryRelation[]  @relation("toMemory")
+
+  @@index([userId])
+  @@index([type])
+  @@index([importanceScore])
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("memory_entries")
+}
+
+// ─────────────────────────────────────────────────────────────
+// EPISODIC MEMORY (Time-bound events)
+// ─────────────────────────────────────────────────────────────
+
+model Episode {
+  id              String   @id @default(uuid())
+  userId          String   @default("default-user")
+  title           String
+  description     String
+  occurredAt      DateTime // When it happened
+  importanceScore Float    @default(0.5)
+  createdAt       DateTime @default(now())
+
+  tags       MemoryTag[]
+  embeddings MemoryEmbedding[]
+
+  @@index([userId])
+  @@index([occurredAt])
+  @@index([importanceScore])
+  @@map("episodes")
+}
+
+// ─────────────────────────────────────────────────────────────
+// SEMANTIC MEMORY (Structured knowledge)
+// ─────────────────────────────────────────────────────────────
+
+model KnowledgeEntry {
+  id              String   @id @default(uuid())
+  userId          String   @default("default-user")
+  title           String
+  content         String   // Full content
+  category        String   // e.g. "TypeScript", "Architecture"
+  source          String?  // Where this knowledge came from
+  importanceScore Float    @default(0.5)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tags       MemoryTag[]
+  embeddings MemoryEmbedding[]
+
+  @@index([userId])
+  @@index([category])
+  @@index([importanceScore])
+  @@map("knowledge_entries")
+}
+
+// ─────────────────────────────────────────────────────────────
+// EMBEDDINGS (Vector Storage References)
+// ─────────────────────────────────────────────────────────────
+
+model MemoryEmbedding {
+  id               String   @id @default(uuid())
+  vector           String   // JSON array of floats [768]
+  modelName        String   // "nomic-embed-text"
+  createdAt        DateTime @default(now())
+
+  // Polymorphic references (only one set)
+  memoryEntryId    String?
+  episodeId        String?
+  knowledgeEntryId String?
+
+  memoryEntry    MemoryEntry?     @relation(fields: [memoryEntryId], references: [id], onDelete: Cascade)
+  episode        Episode?         @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  knowledgeEntry KnowledgeEntry?  @relation(fields: [knowledgeEntryId], references: [id], onDelete: Cascade)
+
+  @@index([memoryEntryId])
+  @@index([episodeId])
+  @@index([knowledgeEntryId])
+  @@map("memory_embeddings")
+}
+
+// ─────────────────────────────────────────────────────────────
+// TAGS (Categorization)
+// ─────────────────────────────────────────────────────────────
+
+model MemoryTag {
+  id   String @id @default(uuid())
+  name String @unique
+
+  memoryEntries    MemoryEntry[]
+  episodes         Episode[]
+  knowledgeEntries KnowledgeEntry[]
+
+  @@map("memory_tags")
+}
+
+// ─────────────────────────────────────────────────────────────
+// RELATIONS (Knowledge Graph)
+// ─────────────────────────────────────────────────────────────
+
+model MemoryRelation {
+  id        String   @id @default(uuid())
+  fromId    String
+  toId      String
+  type      String   // RELATED_TO | CONTRADICTS | SUPERSEDES | PART_OF
+  strength  Float    @default(0.5)
+  createdAt DateTime @default(now())
+
+  from MemoryEntry @relation("fromMemory", fields: [fromId], references: [id], onDelete: Cascade)
+  to   MemoryEntry @relation("toMemory", fields: [toId], references: [id], onDelete: Cascade)
+
+  @@index([fromId])
+  @@index([toId])
+  @@index([type])
+  @@map("memory_relations")
+}
+
+// ─────────────────────────────────────────────────────────────
+// EXTRACTION LOG (Audit trail)
+// ─────────────────────────────────────────────────────────────
+
+model MemoryExtraction {
+  id             String   @id @default(uuid())
+  conversationId String
+  extractedAt    DateTime @default(now())
+  extractedBy    String   // "llm" | "rule-based" | "manual"
+  confidence     Float    // 0.0 - 1.0
+
+  conversation Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  entries      MemoryEntry[]
+
+  @@index([conversationId])
+  @@index([extractedAt])
+  @@map("memory_extractions")
+}
+
+// ─────────────────────────────────────────────────────────────
+// LEGACY TABLES (Renamed APIUsage to ApiUsage for easier typing)
+// ─────────────────────────────────────────────────────────────
+
+model ApiUsage {
+  id         String   @id @default(uuid())
+  service    String
+  tokensUsed Int
+  cost       Float    @default(0)
+  timestamp  DateTime @default(now())
+  messageId  String?
+
+  @@index([timestamp])
+  @@index([service])
+  @@map("api_usage")
+}
+
+model Document {
+  id          String   @id @default(uuid())
+  userId      String
+  filename    String
+  path        String
+  mimeType    String
+  size        Int
+  text        String
+  uploadedAt  DateTime @default(now())
+  processed   Boolean  @default(false)
+  embeddingId String?
+
+  @@index([userId])
+  @@map("documents")
+}
+
+model Feedback {
+  id        String   @id @default(uuid())
+  userId    String
+  messageId String?
+  type      String   // positive, negative, neutral
+  comment   String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("feedback")
+}
+
+model ProactiveMessage {
+  id          String   @id @default(uuid())
+  userId      String
+  content     String
+  type        String   // e.g. "reminder", "suggestion"
+  read        Boolean  @default(false)
+  
+  // Normalized timestamps for legacy support
+  createdAt   DateTime @default(now())
+  generatedAt DateTime @default(now()) 
+  deliveredAt DateTime?
+  trigger     String?
+  priority    String?  @default("medium")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("proactive_messages")
+}
+
+model Task {
+  id        String    @id @default(uuid())
+  userId    String
+  content   String
+  status    String
+  dueDate   DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([status])
+  @@index([userId])
+  @@map("tasks")
+}
+
+model Plugin {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  version     String
+  author      String
+  description String
+  enabled     Boolean  @default(true)
+  config      String?
+  installedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("plugins")
+}
+
+// ─────────────────────────────────────────────────────────────
+// MISSING LEGACY MODELS (Restored for compatibility)
+// ─────────────────────────────────────────────────────────────
+
+model LearningSession {
+  id        String   @id @default(uuid())
+  userId    String   @default("default-user")
+  topic     String
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+  summary   String?
+
+  @@map("learning_sessions")
+}
+
+model EmotionLog {
+  id         String   @id @default(uuid())
+  userId     String   @default("default-user")
+  text       String
+  sentiment  String   // positive, negative, neutral
+  emotions   String   // JSON {joy: 0.5, ...}
+  confidence Float
+  timestamp  DateTime @default(now())
+
+  @@index([userId])
+  @@index([timestamp])
+  @@map("emotion_logs")
+}
+
+model TimeCapsule {
+  id        String   @id @default(uuid())
+  userId    String   @default("default-user")
+  content   String
+  openAt    DateTime
+  opened    Boolean  @default(false)
+  metadata  String?  // JSON
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([openAt])
+  @@map("time_capsules")
+}

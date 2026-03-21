@@ -1,0 +1,244 @@
+import { Message } from '../store/useAppStore';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
+import { format } from 'date-fns';
+import { de } from 'date-fns/locale';
+import 'highlight.js/styles/github-dark.css';
+import { Copy, Check, Sparkles, User, Trash2, Bookmark, Calendar, Cpu, FileText } from 'lucide-react';
+import { useState, memo, useEffect, useRef } from 'react';
+import { parseTwemoji } from '../utils/twemojiHelper';
+import WeatherCard from './WeatherCard';
+
+interface MessageBubbleProps {
+    message: Message;
+}
+
+function MessageBubble({ message }: MessageBubbleProps) {
+    const isUser = message.role === 'user';
+    const [copiedCode, setCopiedCode] = useState<string | null>(null);
+    const [showActions, setShowActions] = useState(false);
+    const contentRef = useRef<HTMLDivElement>(null);
+
+    const copyCode = (code: string, id: string) => {
+        navigator.clipboard.writeText(code);
+        setCopiedCode(id);
+        setTimeout(() => setCopiedCode(null), 2000);
+    };
+
+    // Parse emojis after render
+    useEffect(() => {
+        if (contentRef.current) {
+            parseTwemoji(contentRef.current);
+        }
+    }, [message.content]);
+
+    const handleDelete = () => {
+        // TODO: Implement delete functionality
+        console.log('Delete message:', message.id);
+    };
+
+    const handleSaveToMemory = () => {
+        // TODO: Implement save to memory
+        console.log('Save to memory:', message.content);
+    };
+
+    return (
+        <div
+            className={`flex gap-4 items-start group animate-slide-up cursor-pointer ${isUser ? 'justify-end' : ''}`}
+            onClick={() => setShowActions(!showActions)}
+        >
+            {/* No External Avatars anymore - Icon is INSIDE the bubble */}
+
+            {/* Message Card */}
+            <div className={`min-w-0 ${isUser ? '' : 'flex-1'}`}>
+                {/* Content Card */}
+                <div className={`relative px-5 py-4 min-w-[140px] ${isUser
+                    ? 'bg-bg-secondary/40 backdrop-blur-md border border-white/15 rounded-3xl ml-auto max-w-[85%]' // User: Glass (more visible border)
+                    : 'bg-bg-tertiary/40 backdrop-blur-md border border-white/5 rounded-3xl mr-auto max-w-[85%] shadow-lg shadow-accent-primary/15'     // AI: Different gray with glow
+                    } ${showActions ? 'ring-2 ring-white/10' : ''}`}>
+
+                    {/* Integrated Header: Icon + Name (RESTORED & FIXED) */}
+                    <div className={`flex items-center gap-2 mb-2 pb-2 border-b border-white/5`}>
+                        {/* Icon Container with fixed size to prevent shrinking/disappearing */}
+                        <div className={`flex-shrink-0 flex items-center justify-center w-5 h-5 ${isUser ? 'text-accent-primary' : 'text-accent-secondary'}`}>
+                            {isUser ? <User size={18} strokeWidth={2.5} /> : <Sparkles size={18} strokeWidth={2.5} />}
+                        </div>
+
+                        <span className={`text-xs font-bold whitespace-nowrap ${isUser ? 'text-accent-primary' : 'text-accent-secondary'}`}>
+                            {isUser ? 'Thorben' : 'Neon'}
+                        </span>
+                    </div>
+
+                    {/* Attachments Display */}
+                    {message.attachments && message.attachments.length > 0 && (
+                        <div className={`flex flex-wrap gap-3 mb-3 ${isUser ? 'justify-end' : ''}`}>
+                            {message.attachments.map((att, i) => (
+                                <div key={i} className="group/att relative rounded-lg overflow-hidden border border-border/50 bg-bg-tertiary/50">
+                                    {att.type === 'image' ? (
+                                        <img
+                                            src={att.content}
+                                            alt={att.name}
+                                            className="max-w-[300px] max-h-[300px] object-cover transition-transform hover:scale-[1.02] cursor-pointer"
+                                            onClick={() => window.open(att.content, '_blank')}
+                                        />
+                                    ) : (
+                                        <div className="flex items-center gap-3 p-3 min-w-[200px]">
+                                            <div className="p-2 rounded-lg bg-bg-primary/50">
+                                                <FileText size={20} className="text-accent-primary" />
+                                            </div>
+                                            <div className="flex flex-col overflow-hidden">
+                                                <span className="text-sm font-medium text-text-primary truncate">{att.name}</span>
+                                                <span className="text-xs text-text-secondary uppercase">{att.type}</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Markdown Content */}
+                    <div
+                        ref={contentRef}
+                        className={`prose prose-base max-w-none
+                        prose-p:my-3 prose-p:first:mt-0 prose-p:last:mb-0
+                        prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2
+                        prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
+                        prose-a:underline prose-a:transition-colors
+                        prose-pre:bg-bg-tertiary prose-pre:border prose-pre:border-border prose-pre:my-4 prose-pre:rounded-lg
+                        prose-ul:my-3 prose-ul:space-y-1 prose-ul:list-disc prose-ul:pl-4
+                        prose-ol:my-3 prose-ol:space-y-1 prose-ol:list-decimal prose-ol:pl-4
+                        prose-li:my-0
+                        prose-strong:font-semibold
+                        prose-em:italic
+                        prose-blockquote:border-l-4 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:my-4 prose-blockquote:rounded-r-lg
+                        prose-hr:border-solid prose-hr:border-t prose-hr:my-6 prose-hr:w-full
+                        prose-invert prose-headings:text-text-primary prose-a:text-accent-primary hover:prose-a:underline prose-code:text-accent-secondary prose-code:bg-accent-light prose-li:marker:text-accent-primary prose-blockquote:border-accent-primary prose-blockquote:bg-bg-hover prose-hr:border-border/40
+                    `}
+                    >
+                        <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            rehypePlugins={[rehypeHighlight]}
+                            components={{
+                                code({ node, inline, className, children, ...props }: any) {
+                                    const match = /language-(\w+)/.exec(className || '');
+                                    const codeString = String(children).replace(/\n$/, '');
+                                    const codeId = `code-${Math.random().toString(36)}`;
+
+                                    if (!inline && match && match[1] === 'weather') {
+                                        try {
+                                            const weatherData = JSON.parse(codeString);
+                                            return <WeatherCard data={weatherData} />;
+                                        } catch (e) {
+                                            // Fallback to code block if JSON is invalid (during streaming)
+                                            return <pre className="text-xs text-red-400">Loading Weather Data...</pre>;
+                                        }
+                                    }
+
+                                    if (!inline && match) {
+                                        return (
+                                            <div className="relative group/code my-4 -mx-5 rounded-lg overflow-hidden">
+                                                {/* Header */}
+                                                <div className="flex items-center justify-between px-4 py-2.5 bg-bg-hover border-b border-border">
+                                                    <span className="text-xs text-text-secondary font-mono uppercase tracking-wide">
+                                                        {match[1]}
+                                                    </span>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            copyCode(codeString, codeId);
+                                                        }}
+                                                        className="flex items-center gap-1.5 px-2.5 py-1 text-xs bg-bg-tertiary hover:bg-border rounded-md transition-colors"
+                                                    >
+                                                        {copiedCode === codeId ? (
+                                                            <>
+                                                                <Check className="w-3 h-3 text-green-400" />
+                                                                <span className="text-green-400">Copied</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Copy className="w-3 h-3" />
+                                                                Copy
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                </div>
+
+                                                {/* Code Block */}
+                                                <pre className="!mt-0 !mb-0 !rounded-none !border-0 overflow-x-auto px-4 py-3">
+                                                    <code className={className} {...props}>
+                                                        {children}
+                                                    </code>
+                                                </pre>
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <code className={`${className} text-accent-secondary bg-accent-light px-1.5 py-0.5 rounded-md text-sm font-mono`} {...props}>
+                                            {children}
+                                        </code>
+                                    );
+                                },
+                            }}
+                        >
+                            {/* Temporarily disabled formatter to test if AI already formats well */}
+                            {message.content}
+                            {/* {improveTextFormatting(message.content)} */}
+                        </ReactMarkdown>
+                        {/* Actions Footer - inside bubble, only visible on click */}
+                        {showActions && (
+                            <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between animate-fade-in">
+                                {/* Left: Metadata */}
+                                <div className="flex items-center gap-3 text-xs text-text-secondary">
+                                    <div className="flex items-center gap-1.5">
+                                        <Calendar className="w-3.5 h-3.5" />
+                                        <span>{format(new Date(message.timestamp), 'dd.MM.yyyy • HH:mm', { locale: de })}</span>
+                                    </div>
+                                    {message.modelUsed && !isUser && (
+                                        <div className="flex items-center gap-1.5">
+                                            <Cpu className="w-3.5 h-3.5" />
+                                            <span>{message.modelUsed || 'Ollama'}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Right: Action Buttons */}
+                                <div className="flex items-center gap-2">
+                                    {!isUser && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleSaveToMemory();
+                                            }}
+                                            className="p-1.5 hover:bg-bg-hover rounded-md transition-colors group/btn"
+                                            title="In Erinnerungen speichern"
+                                        >
+                                            <Bookmark className="w-4 h-4 text-text-secondary group-hover/btn:text-accent-primary transition-colors" />
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDelete();
+                                        }}
+                                        className="p-1.5 hover:bg-bg-hover rounded-md transition-colors group/btn"
+                                        title="Nachricht löschen"
+                                    >
+                                        <Trash2 className="w-4 h-4 text-text-secondary group-hover/btn:text-red-400 transition-colors" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    );
+}
+
+// Memoize component for performance (like assistant-ui)
+export default memo(MessageBubble);
