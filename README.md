@@ -8,8 +8,6 @@
 
 NEON ist eine Web-App, die Claude AI und lokale LLMs (Ollama/Gemma3) kombiniert. Das System routet Anfragen intelligent zwischen Cloud und lokal, merkt sich Kontext ueber ein 5-schichtiges Gedaechtnissystem und ist von jedem Geraet im Netzwerk erreichbar.
 
-**Kein Electron** — laeuft direkt im Browser (Chrome, Firefox, Safari, Handy).
-
 ---
 
 ## Features
