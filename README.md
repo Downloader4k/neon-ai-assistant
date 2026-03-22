@@ -22,7 +22,10 @@ NEON ist eine Web-App, die Claude AI und lokale LLMs (Ollama/Gemma3) kombiniert.
 - **Wetter** — OpenWeatherMap Integration
 - **Wissensbasis (RAG)** — Dokumente importieren und per KI durchsuchen
 - **Emotion Tracking** — Stimmungserkennung in Gespraechen
-- **Admin Panel** — Memory-Management, Extraktion, API-Kosten-Tracking
+- **Admin Panel** — Memory-Management, Extraktion, API-Kosten-Tracking, Performance-Dashboard
+- **Code-Ausfuehrung** — JavaScript, Python, PowerShell in einer Sandbox
+- **Zeitkapseln** — Nachrichten an dein zukuenftiges Ich planen
+- **Auto-Learning** — Manuelle Recherche mit DuckDuckGo + Wikipedia, Ergebnisse werden im Gedaechtnis gespeichert
 
 ---
 
@@ -108,7 +111,7 @@ neon-ai-assistant/
 │
 ├── frontend/               # React Web-App (Vite)
 │   ├── src/
-│   │   ├── components/     # 23+ UI Komponenten
+│   │   ├── components/     # 25+ UI Komponenten
 │   │   ├── store/          # Zustand State Management
 │   │   ├── services/       # STT, TTS
 │   │   └── styles/
@@ -211,8 +214,12 @@ GET  /api/health                    # System-Status
 GET  /api/search?q=query            # Semantische Suche
 GET  /api/memory/:userId            # Erinnerungen
 POST /api/memory/:userId/retrieve   # Relevante Memories
+POST /api/code/execute               # Code ausfuehren (JS/Python/PS)
 GET  /api/admin/stats               # System-Statistiken
 GET  /api/admin/usage               # API-Kosten
+GET  /api/admin/performance          # Performance-Metriken
+POST /api/magic/capsules             # Zeitkapsel erstellen
+GET  /api/magic/capsules/:userId     # Zeitkapseln abrufen
 ```
 
 ### WebSocket
@@ -230,29 +237,24 @@ socket.on('ai-response-complete', ({ conversationId }))
 
 ## Status der Phasen
 
-### Abgeschlossen
+### Alle Phasen abgeschlossen
 
 | Phase | Feature | Status |
 |-------|---------|--------|
 | 0-4 | Infrastruktur, Chat, Datenbank, AI-Integration | Fertig |
 | 5 | Semantische Suche (ChromaDB + Embeddings) | Fertig |
 | 6 | 5-Layer Memory System (Consolidation, Decay, Scoring) | Fertig |
-| 7 | Admin Panel (Memory-Management, Extraktion, API-Kosten) | Fertig |
+| 7 | Admin Panel (Memory-Management, Extraktion, API-Kosten, Performance) | Fertig |
+| 8 | Voice I/O (Browser Web Speech API: STT + TTS) | Fertig |
 | 9 | Proaktive KI (Kontext-Monitoring, Vorschlaege) | Fertig |
 | 10 | Lernmodus (Interview-Sessions, Persoenlichkeit) | Fertig |
 | 11 | Settings (KI-Verhalten, Privacy, Appearance) | Fertig |
+| 12 | Code-Tools (JS/Python/PowerShell Sandbox + UI) | Fertig |
 | 13 | Plugin-System (Skill-Store, dynamisches Loading) | Fertig |
-
-### Teilweise implementiert
-
-| Phase | Feature | Status | Details |
-|-------|---------|--------|---------|
-| 8 | Voice I/O | Funktioniert | Browser Web Speech API (STT + TTS) mit visueller Aufnahme-/Wiedergabe-Anzeige |
-| 12 | Code-Tools | Basis fertig | Code-Ausfuehrung mit Guardrails. Erweiterte Dev-Features ausstehend |
-| 14 | Web-Suche & Skills | Basis fertig | DuckDuckGo + Wikipedia + Wetter. Weitere Integrationen geplant |
-| 15 | Performance-Optimierung | Infrastruktur vorhanden | Cache-Klasse und PerformanceMonitor gebaut, Integration in Services ausstehend |
-| 16 | Security | Fertig | Token-basierte Auth (API + Admin), Rate-Limiting, XSS-Sanitizing, Helmet, CORS |
-| 17 | Magic Features | Grossteils fertig | Emotion Tracking, Time Capsules fertig. PredictiveService teilweise |
+| 14 | Web-Suche & Skills (DuckDuckGo + Wikipedia + Wetter + Auto-Learning) | Fertig |
+| 15 | Performance (Dashboard, MemoryMonitor, PerformanceMonitor) | Fertig |
+| 16 | Security (Token-Auth, Rate-Limiting, XSS, Helmet, CORS) | Fertig |
+| 17 | Magic Features (Emotion Tracking, Zeitkapseln, Predictive Assistant) | Fertig |
 
 ### Naechste Schritte
 

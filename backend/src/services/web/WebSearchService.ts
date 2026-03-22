@@ -18,22 +18,25 @@ export class WebSearchService {
         try {
             logger.info(`Searching web for: ${query}`);
 
-            // Try DuckDuckGo Instant Answer API first (fast & reliable)
-            const ddgResults = await this.searchDuckDuckGo(query, limit);
-            if (ddgResults.length > 0) {
-                logger.info(`Found ${ddgResults.length} DuckDuckGo results`);
-                return ddgResults;
+            // Search DuckDuckGo and Wikipedia in parallel
+            const [ddgResults, wikiResults] = await Promise.all([
+                this.searchDuckDuckGo(query, limit),
+                this.searchWikipedia(query, limit)
+            ]);
+
+            // Combine results, Wikipedia first (better for German queries), then DuckDuckGo
+            const combined: SearchResult[] = [];
+            const seenUrls = new Set<string>();
+
+            for (const result of [...wikiResults, ...ddgResults]) {
+                if (!seenUrls.has(result.url)) {
+                    seenUrls.add(result.url);
+                    combined.push(result);
+                }
             }
 
-            // Fallback: Wikipedia
-            const wikiResults = await this.searchWikipedia(query, limit);
-            if (wikiResults.length > 0) {
-                logger.info(`Found ${wikiResults.length} Wikipedia results`);
-                return wikiResults;
-            }
-
-            logger.info(`No results found for query: ${query}`);
-            return [];
+            logger.info(`Found ${combined.length} results (DDG: ${ddgResults.length}, Wiki: ${wikiResults.length})`);
+            return combined.slice(0, limit);
 
         } catch (error) {
             logger.error('Web search failed', { error, query });
@@ -52,7 +55,8 @@ export class WebSearchService {
                     q: query,
                     format: 'json',
                     no_html: 1,
-                    skip_disambig: 1
+                    skip_disambig: 1,
+                    kl: 'de-de'  // Deutsche Ergebnisse bevorzugen
                 },
                 headers: {
                     'User-Agent': this.USER_AGENT
@@ -100,7 +104,7 @@ export class WebSearchService {
     private async searchWikipedia(query: string, limit: number = 5): Promise<SearchResult[]> {
         try {
             // Use Wikipedia's opensearch API
-            const response = await axios.get('https://en.wikipedia.org/w/api.php', {
+            const response = await axios.get('https://de.wikipedia.org/w/api.php', {
                 params: {
                     action: 'opensearch',
                     search: query,

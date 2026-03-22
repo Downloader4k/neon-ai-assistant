@@ -3,7 +3,7 @@ import { useAppStore } from './store/useAppStore';
 import {
   Sparkles, Settings, Trash2,
   Brain, Lightbulb, Activity, Puzzle, Search, Shield, ChevronDown, ChevronRight, Wrench,
-  PanelLeft, SquarePen, Pin, PinOff, Edit2
+  PanelLeft, SquarePen, Pin, PinOff, Edit2, Terminal, Gift
 } from 'lucide-react';
 import ChatInterface from './components/ChatInterface';
 import WelcomeScreen from './components/WelcomeScreen';
@@ -15,10 +15,12 @@ import SettingsPanel from './components/SettingsPanel';
 import SkillStore from './components/SkillStore';
 import EmotionDashboard from './components/EmotionDashboard';
 import PredictiveAssistant from './components/PredictiveAssistant';
+import CodeExecutor from './components/CodeExecutor';
+import TimeCapsules from './components/TimeCapsules';
 import ProactiveNotifications from './components/ProactiveNotifications';
 import './index.css';
 
-type ViewMode = 'welcome' | 'chat' | 'admin' | 'memory' | 'search' | 'settings' | 'skills' | 'emotions' | 'predictive';
+type ViewMode = 'welcome' | 'chat' | 'admin' | 'memory' | 'search' | 'settings' | 'skills' | 'emotions' | 'predictive' | 'code' | 'capsules';
 
 export default function App() {
   const initializeSocket = useAppStore((state) => state.initializeSocket);
@@ -72,8 +74,9 @@ export default function App() {
 
   const startNewChat = (initialMessage?: string, attachments?: any[]) => {
     useAppStore.getState().setCurrentConversation(null);
-    setActiveView('chat');
-    if ((initialMessage && typeof initialMessage === 'string' && initialMessage.trim()) || (attachments && attachments.length > 0)) {
+    const hasContent = (initialMessage && typeof initialMessage === 'string' && initialMessage.trim()) || (attachments && attachments.length > 0);
+    setActiveView(hasContent ? 'chat' : 'welcome');
+    if (hasContent) {
       setTimeout(() => {
         useAppStore.getState().sendMessage(initialMessage || '', attachments);
       }, 0);
@@ -122,6 +125,8 @@ export default function App() {
       case 'skills': return <SkillStore />;
       case 'emotions': return <EmotionDashboard />;
       case 'predictive': return <PredictiveAssistant onAcceptPrediction={(text) => { useAppStore.getState().setCurrentConversation(null); useAppStore.getState().sendMessage(text); setActiveView('chat'); }} />;
+      case 'code': return <CodeExecutor />;
+      case 'capsules': return <TimeCapsules />;
       default: return <WelcomeScreen onStartChat={startNewChat} />;
     }
   };
@@ -260,7 +265,7 @@ export default function App() {
           {/* Tools Group */}
           <div className="tools-group px-2 mb-1">
             <button
-              className={`nav-item w-full ${['memory', 'emotions', 'predictive', 'skills', 'admin'].includes(activeView) ? 'active' : ''} ${!sidebarOpen ? 'justify-center px-0' : ''}`}
+              className={`nav-item w-full ${['memory', 'emotions', 'predictive', 'capsules', 'skills', 'admin', 'code'].includes(activeView) ? 'active' : ''} ${!sidebarOpen ? 'justify-center px-0' : ''}`}
               onClick={() => sidebarOpen ? setIsToolsOpen(!isToolsOpen) : setActiveView('memory')}
               title="Werkzeuge"
             >
@@ -279,7 +284,9 @@ export default function App() {
                   { id: 'memory', icon: Brain, label: 'Gedächtnis' },
                   { id: 'emotions', icon: Activity, label: 'Emotionen' },
                   { id: 'predictive', icon: Lightbulb, label: 'Vorhersagen' },
+                  { id: 'capsules', icon: Gift, label: 'Zeitkapseln' },
                   { id: 'skills', icon: Puzzle, label: 'Skills' },
+                  { id: 'code', icon: Terminal, label: 'Code-Tools' },
                   { id: 'admin', icon: Shield, label: 'Admin' }
                 ].map(tool => (
                   <button

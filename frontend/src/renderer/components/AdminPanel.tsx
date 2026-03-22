@@ -9,9 +9,29 @@ import {
   BarChart3,
   Brain,
   MessageSquare,
+  Gauge,
 } from 'lucide-react';
 import InterviewDashboard from './InterviewDashboard';
 import { useAppStore } from '../store/useAppStore';
+
+interface PerformanceData {
+  memory: {
+    rss: string;
+    heapTotal: string;
+    heapUsed: string;
+    external: string;
+  };
+  uptime: number;
+  performanceMetrics: Record<string, {
+    count: number;
+    min: number;
+    max: number;
+    avg: number;
+    p50: number;
+    p95: number;
+    p99: number;
+  } | null>;
+}
 
 interface SystemStats {
   database: {
@@ -126,6 +146,26 @@ export default function AdminPanel({ onStartChat }: { onStartChat: (msg: string)
     rate: 1,
     recentLogs: []
   });
+
+  const [perfData, setPerfData] = useState<PerformanceData | null>(null);
+  const [perfLoading, setPerfLoading] = useState(false);
+
+  const fetchPerformance = async () => {
+    setPerfLoading(true);
+    try {
+      const res = await fetch('http://localhost:3001/api/admin/performance');
+      if (res.ok) setPerfData(await res.json());
+    } catch (error) {
+      console.error('Failed to fetch performance data', error);
+    }
+    setPerfLoading(false);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'performance' && !perfData) {
+      fetchPerformance();
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -269,6 +309,13 @@ export default function AdminPanel({ onStartChat }: { onStartChat: (msg: string)
         >
           <Brain size={18} />
           Training
+        </button>
+        <button
+          className={`tab ${activeTab === 'performance' ? 'active' : ''}`}
+          onClick={() => setActiveTab('performance')}
+        >
+          <Gauge size={18} />
+          Performance
         </button>
       </div>
 
@@ -619,6 +666,102 @@ export default function AdminPanel({ onStartChat }: { onStartChat: (msg: string)
       {activeTab === 'interviews' && (
         <div className="tab-content">
           <InterviewDashboard />
+        </div>
+      )}
+
+      {/* Performance Tab */}
+      {activeTab === 'performance' && (
+        <div className="tab-content">
+          <div className="action-card">
+            <h3>
+              <Gauge size={20} />
+              Server Performance
+            </h3>
+            <p>Speicherverbrauch und Laufzeitmetriken des Backends</p>
+
+            <div className="action-buttons">
+              <button
+                onClick={fetchPerformance}
+                disabled={perfLoading}
+                className="action-btn primary"
+              >
+                <RefreshCw size={18} className={perfLoading ? 'spinning' : ''} />
+                {perfLoading ? 'Lade...' : 'Aktualisieren'}
+              </button>
+            </div>
+          </div>
+
+          {perfData && (
+            <>
+              <div className="action-card">
+                <h3>
+                  <Server size={20} />
+                  Speicherverbrauch
+                </h3>
+                <div className="detail-list">
+                  <div className="detail-item">
+                    <span>RSS (Resident Set Size):</span>
+                    <strong>{perfData.memory.rss}</strong>
+                  </div>
+                  <div className="detail-item">
+                    <span>Heap Gesamt:</span>
+                    <strong>{perfData.memory.heapTotal}</strong>
+                  </div>
+                  <div className="detail-item">
+                    <span>Heap Belegt:</span>
+                    <strong>{perfData.memory.heapUsed}</strong>
+                  </div>
+                  <div className="detail-item">
+                    <span>Extern:</span>
+                    <strong>{perfData.memory.external}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="action-card">
+                <h3>
+                  <Activity size={20} />
+                  Laufzeit
+                </h3>
+                <div className="detail-list">
+                  <div className="detail-item">
+                    <span>Uptime:</span>
+                    <strong>
+                      {Math.floor(perfData.uptime / 3600)}h {Math.floor((perfData.uptime % 3600) / 60)}m {Math.floor(perfData.uptime % 60)}s
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {Object.keys(perfData.performanceMetrics).length > 0 && (
+                <div className="action-card">
+                  <h3>
+                    <BarChart3 size={20} />
+                    Ausfuehrungszeiten
+                  </h3>
+                  <div className="detail-list" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                    {Object.entries(perfData.performanceMetrics).map(([label, metric]) => (
+                      metric && (
+                        <div key={label} className="detail-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
+                          <strong style={{ fontSize: '0.9rem' }}>{label}</strong>
+                          <span style={{ fontSize: '0.8rem' }}>
+                            Anzahl: {metric.count} | Avg: {metric.avg.toFixed(1)}ms | P95: {metric.p95.toFixed(1)}ms | Max: {metric.max.toFixed(1)}ms
+                          </span>
+                        </div>
+                      )
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {!perfData && !perfLoading && (
+            <div className="info-card">
+              <h4>Keine Daten</h4>
+              <p>Klicke auf "Aktualisieren", um die Performance-Daten vom Server zu laden.</p>
+            </div>
+          )}
         </div>
       )}
 

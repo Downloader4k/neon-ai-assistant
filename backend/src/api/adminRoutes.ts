@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { simpleInterviewService } from '../services/learning/SimpleInterviewService';
 import { logger } from '../utils/logger';
-import { Cache } from '../utils/performance';
+import { Cache, performanceMonitor, memoryMonitor } from '../utils/performance';
 
 // Cache fuer Admin-Stats (30 Sekunden TTL)
 const statsCache = new Cache<any>(30_000);
@@ -430,6 +430,24 @@ router.get('/usage', async (_req, res) => {
     } catch (error) {
         logger.error('Error fetching API usage', { error });
         res.status(500).json({ error: 'Failed to fetch API usage' });
+    }
+});
+
+// GET /api/admin/performance - Performance & Memory Metrics
+router.get('/performance', (_req, res) => {
+    try {
+        const memory = memoryMonitor.getStats();
+        const performanceMetrics = performanceMonitor.getAllStats();
+        const uptime = process.uptime();
+
+        res.json({
+            memory,
+            uptime,
+            performanceMetrics,
+        });
+    } catch (error) {
+        logger.error('Error fetching performance metrics', { error });
+        res.status(500).json({ error: 'Failed to fetch performance metrics' });
     }
 });
 

@@ -758,10 +758,67 @@ ${nextQuestion.isStageEnd ? '\n[Nach dieser Antwort: Fasse die Stufe kurz zusamm
                 // Notify user we started
                 // socket.emit('notification', { message: `Recherche gestartet: ${topic}` }); 
 
-                    // Auto-Learning removed
-                    // const result = await autoLearningService.learnTopic(topic, userId);
-                    const result = { success: true }; // Placeholder
+                    // Web-Recherche mit DuckDuckGo + Wikipedia
+                    const { webSearchService } = await import('../services/web/WebSearchService');
+                    const searchResults = await webSearchService.search(topic, 5);
 
+                    let result = '';
+                    if (searchResults.length > 0) {
+                        // Erste Seite lesen für detaillierten Inhalt
+                        const pageContent = await webSearchService.readPage(searchResults[0].url);
+                        const summary = pageContent.length > 2000 ? pageContent.substring(0, 2000) + '...' : pageContent;
+
+                        result = `📚 Recherche zu "${topic}" abgeschlossen!\n\n`;
+                        result += `**${searchResults[0].title}**\n${searchResults[0].snippet}\n\n`;
+                        if (summary && summary.length > 50) {
+                            result += `--- Auszug ---\n${summary}\n\n`;
+                        }
+                        if (searchResults.length > 1) {
+                            result += `--- Weitere Quellen ---\n`;
+                            for (let i = 1; i < searchResults.length; i++) {
+                                result += `• ${searchResults[i].title}: ${searchResults[i].snippet}\n`;
+                            }
+                        }
+                        // Recherche-Ergebnisse als semantisches Wissen speichern
+                        try {
+                            const { prisma } = await import('../services/db/prisma');
+
+                            // Hauptergebnis als Memory speichern
+                            const memoryContent = `[Recherche: ${topic}] ${searchResults[0].title}: ${searchResults[0].snippet}`;
+                            await prisma.memoryEntry.create({
+                                data: {
+                                    userId: userId || 'default-user',
+                                    type: 'FACT',
+                                    content: memoryContent.substring(0, 1000),
+                                    importanceScore: 0.8,
+                                    isActive: true,
+                                },
+                            });
+
+                            // Weitere Quellen als einzelne Memories speichern
+                            for (let i = 1; i < Math.min(searchResults.length, 3); i++) {
+                                const extraContent = `[Recherche: ${topic}] ${searchResults[i].title}: ${searchResults[i].snippet}`;
+                                await prisma.memoryEntry.create({
+                                    data: {
+                                        userId: userId || 'default-user',
+                                        type: 'FACT',
+                                        content: extraContent.substring(0, 1000),
+                                        importanceScore: 0.6,
+                                        isActive: true,
+                                    },
+                                });
+                            }
+
+                            const savedCount = Math.min(searchResults.length, 3);
+                            result += `\n✅ ${savedCount} Wissenseinträge im Gedächtnis gespeichert.`;
+                            logger.info(`Saved ${savedCount} memory entries from research on "${topic}"`);
+                        } catch (memError) {
+                            logger.error('Failed to save research to memory', { memError });
+                            result += `\n⚠️ Ergebnisse konnten nicht im Gedächtnis gespeichert werden.`;
+                        }
+                    } else {
+                        result = `Keine Ergebnisse zu "${topic}" gefunden. Versuche einen anderen Suchbegriff.`;
+                    }
 
                 socket.emit('auto-learning-complete', { topic, result });
 

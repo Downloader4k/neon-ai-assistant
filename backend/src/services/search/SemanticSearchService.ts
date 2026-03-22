@@ -73,7 +73,7 @@ export class SemanticSearchService {
             const searchResults: SearchResult[] = results.ids.map((id, index) => ({
                 messageId: id,
                 content: results.documents[index],
-                similarity: 1 - results.distances[index], // Convert distance to similarity
+                similarity: Math.max(0, Math.min(1, 1 / (1 + results.distances[index]))), // Normalize distance to 0-1 similarity
                 metadata: results.metadatas[index] as any,
             }));
 
