@@ -78,6 +78,11 @@ Title (no quotes):`;
         const response = await aiRouter.route(prompt, [], 'ollama');
         let title = response.content.trim().replace(/^["']|["']$/g, '');
 
+        // Fix corrupted umlauts: replace replacement chars with correct ones
+        title = Buffer.from(title, 'utf8').toString('utf8');
+        // Remove any remaining replacement characters
+        title = title.replace(/\ufffd/g, '');
+
         // Fallback if empty or too long
         if (!title || title.length > 50) {
             title = userMessage.slice(0, 30) + '...'; // Use userMessage

@@ -2,6 +2,12 @@ import { Router } from 'express';
 import multer from 'multer';
 import { simpleInterviewService } from '../services/learning/SimpleInterviewService';
 import { logger } from '../utils/logger';
+import { Cache } from '../utils/performance';
+
+// Cache fuer Admin-Stats (30 Sekunden TTL)
+const statsCache = new Cache<any>(30_000);
+// Cache fuer API-Usage (60 Sekunden TTL)
+const usageCache = new Cache<any>(60_000);
 
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -19,36 +25,32 @@ const upload = multer({
 
 const router = Router();
 
-// GET /api/admin/stats
+// GET /api/admin/stats (mit Cache)
 router.get('/stats', async (_req, res) => {
     try {
+        const stats = await statsCache.getOrCompute('admin-stats', async () => {
+            const { prisma } = await import('../services/db/prisma');
+            const totalMemories = await prisma.memoryEntry.count({ where: { isActive: true } });
+            const totalMessages = await prisma.message.count();
+            const totalConversations = await prisma.conversation.count();
+            const totalUsers = await prisma.user.count();
 
+            const apiUsage = await prisma.apiUsage.aggregate({
+                _sum: { tokensUsed: true, cost: true },
+                _count: true,
+            });
 
-        const { prisma } = await import('../services/db/prisma');
-        const totalMemories = await prisma.memoryEntry.count({ where: { isActive: true } });
-        const totalMessages = await prisma.message.count();
-        const totalConversations = await prisma.conversation.count();
-        const totalUsers = await prisma.user.count();
-
-        // API usage stats (real data from api_usage table)
-        const apiUsage = await prisma.apiUsage.aggregate({
-            _sum: { tokensUsed: true, cost: true },
-            _count: true,
+            return {
+                database: { totalMemories, totalMessages, totalConversations, totalUsers },
+                api: {
+                    totalRequests: apiUsage._count || 0,
+                    totalTokens: apiUsage._sum.tokensUsed || 0,
+                    totalCostUsd: apiUsage._sum.cost || 0,
+                },
+            };
         });
 
-        res.json({
-            database: {
-                totalMemories,
-                totalMessages,
-                totalConversations,
-                totalUsers,
-            },
-            api: {
-                totalRequests: apiUsage._count || 0,
-                totalTokens: apiUsage._sum.tokensUsed || 0,
-                totalCostUsd: apiUsage._sum.cost || 0,
-            },
-        });
+        res.json(stats);
     } catch (error) {
         logger.error('Error getting admin stats', { error });
         res.status(500).json({ error: 'Failed to fetch stats' });
@@ -390,47 +392,41 @@ router.post('/memory/clear-working', async (_req, res) => {
     }
 });
 
-// GET /api/admin/usage - Get API Usage stats
+// GET /api/admin/usage - API-Nutzungsstatistiken (mit Cache)
 router.get('/usage', async (_req, res) => {
     try {
-        const { prisma } = await import('../services/db/prisma');
-        const { currencyService } = await import('../services/currency/CurrencyService');
+        const data = await usageCache.getOrCompute('api-usage', async () => {
+            const { prisma } = await import('../services/db/prisma');
+            const { currencyService } = await import('../services/currency/CurrencyService');
 
-        const rate = await currencyService.getRate();
+            const rate = await currencyService.getRate();
 
-        // Aggregate by service
-        const usageByService = await prisma.apiUsage.groupBy({
-            by: ['service'],
-            _sum: {
-                tokensUsed: true,
-                cost: true
-            }
+            const usageByService = await prisma.apiUsage.groupBy({
+                by: ['service'],
+                _sum: { tokensUsed: true, cost: true },
+            });
+
+            const recentLogs = await prisma.apiUsage.findMany({
+                orderBy: { timestamp: 'desc' },
+                take: 50,
+            });
+
+            const totalCostUsd = usageByService.reduce((sum, item) => sum + (item._sum.cost || 0), 0);
+
+            return {
+                currency: 'EUR',
+                rate,
+                summary: usageByService.map(u => ({
+                    service: u.service,
+                    tokens: u._sum.tokensUsed || 0,
+                    cost: (u._sum.cost || 0) * rate,
+                })),
+                totalCost: totalCostUsd * rate,
+                recentLogs: recentLogs.map(log => ({ ...log, cost: log.cost * rate })),
+            };
         });
 
-        // Get recent logs (last 50)
-        const recentLogs = await prisma.apiUsage.findMany({
-            orderBy: { timestamp: 'desc' },
-            take: 50
-        });
-
-        // Calculate total cost
-        const totalCostUsd = usageByService.reduce((sum, item) => sum + (item._sum.cost || 0), 0);
-        const totalCostEur = totalCostUsd * rate;
-
-        res.json({
-            currency: 'EUR',
-            rate,
-            summary: usageByService.map(u => ({
-                service: u.service,
-                tokens: u._sum.tokensUsed || 0,
-                cost: (u._sum.cost || 0) * rate // Convert to EUR
-            })),
-            totalCost: totalCostEur,
-            recentLogs: recentLogs.map(log => ({
-                ...log,
-                cost: log.cost * rate // Convert individual logs too
-            }))
-        });
+        res.json(data);
     } catch (error) {
         logger.error('Error fetching API usage', { error });
         res.status(500).json({ error: 'Failed to fetch API usage' });

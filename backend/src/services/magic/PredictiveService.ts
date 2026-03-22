@@ -1,158 +1,191 @@
 /**
- * Predictive Assistance - Proactive suggestions based on patterns
+ * Predictive Assistance - Proaktive Vorschlaege basierend auf Mustern
+ *
+ * Analysiert Konversationshistorie und generiert kontextbezogene
+ * Vorschlaege, Fragen und Erinnerungen.
  */
+import { logger } from '../../utils/logger';
+import { Cache } from '../../utils/performance';
 
 export interface Prediction {
     type: 'task' | 'question' | 'reminder' | 'suggestion';
     content: string;
     confidence: number;
-    basedOn: string;
+    category: string;
+    priority: 'high' | 'medium' | 'low';
+    basedOn?: string;
 }
+
+// Cache fuer Vorhersagen (5 Minuten pro User)
+const predictionCache = new Cache<Prediction[]>(5 * 60 * 1000);
 
 export class PredictiveService {
     /**
-     * Analyze patterns and make predictions
+     * Muster analysieren und Vorhersagen generieren
      */
-    async predictNext(userId: string): Promise<any[]> {
-        const { prisma } = await import('../db/prisma');
-        const { aiRouter } = await import('../router/AIRouter');
-
-        // Get recent conversations
-        const conversations = await prisma.conversation.findMany({
-            where: { userId },
-            take: 5, // Reduce to 5 most recent to fit context
-            orderBy: { createdAt: 'desc' },
-            include: {
-                messages: {
-                    take: 10,
-                    orderBy: { timestamp: 'desc' },
-                },
-            },
-        });
-
-        // 1. Prepare Context from History
-        let contextSummary = "";
-        conversations.forEach((conv, i) => {
-            const msgs = conv.messages.slice().reverse().map(m => `${m.role}: ${m.content}`).join('\n');
-            contextSummary += `\n[Conversation ${i + 1} - Title: ${conv.title}]\n${msgs}\n`;
-        });
-
-        if (!contextSummary) {
-            // Fallback for new users
-            return [{
-                type: 'suggestion',
-                content: 'Ich bin bereit! Erzähl mir, woran du gerade arbeitest.',
-                confidence: 0.9,
-                category: 'Start',
-                priority: 'high'
-            }];
-        }
-
-        // 2. Prompt the AI
-        const prompt = `
-        You are 'Neon', a proactive AI assistant. 
-        Analyze the recent user conversation history below.
-        Identify the user's current goals, unfinished tasks, or potential interests.
-        
-        Generate 3 proactive suggestions/questions that you (the AI) could ask the user right now to offer help.
-        The suggestions should be natural, helpful, and specific to the context. 
-        Avoid generic "How can I help?". Be specific like "Should we continue debugging the React component?"
-        
-        Output MUST be a valid JSON array of objects with the following structure:
-        [
-            {
-                "type": "question" | "task" | "suggestion",
-                "content": "The actual text string to show the user",
-                "confidence": number (0.0 to 1.0),
-                "category": "Short Label (e.g. Coding, Health, Work)",
-                "priority": "high" | "medium" | "low"
-            }
-        ]
-        
-        Key Rules:
-        - Output ONLY the JSON. No markdown formatting, no explanations.
-        - Language: German (Deutsch).
-        - Maximum 3 items.
-
-        [Recent History]:
-        ${contextSummary}
-        `;
+    async predictNext(userId: string): Promise<Prediction[]> {
+        // Cache pruefen
+        const cached = predictionCache.get(`predict-${userId}`);
+        if (cached) return cached;
 
         try {
-            // Use 'ollama' or 'claude' based on router availability, but prefer a smart model if possible.
-            // Using aiRouter.route defaults to auto-selection.
-            const response = await aiRouter.route(prompt, [], 'ollama'); // Use ollama for speed/cost if available, or just auto. 
-            // Actually, let's use the default routing logic (remove forceProvider if you want smart routing, 
-            // but for simple structure tasks Ollama is often enough and faster).
-            // Let's stick to Ollama for now as it's the verified working provider in previous steps.
+            const { prisma } = await import('../db/prisma');
+            const { aiRouter } = await import('../router/AIRouter');
 
-            let jsonString = response.content;
+            // Letzte 5 Konversationen mit Nachrichten laden
+            const conversations = await prisma.conversation.findMany({
+                where: { userId },
+                take: 5,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    messages: {
+                        take: 10,
+                        orderBy: { timestamp: 'desc' },
+                    },
+                },
+            });
 
-            // Clean up potentially markdown wrapped JSON
-            jsonString = jsonString.replace(/```json/g, '').replace(/```/g, '').trim();
+            // Kontext aus History aufbauen
+            let contextSummary = '';
+            conversations.forEach((conv, i) => {
+                const msgs = conv.messages.slice().reverse()
+                    .map(m => `${m.role}: ${m.content.slice(0, 200)}`)
+                    .join('\n');
+                contextSummary += `\n[Konversation ${i + 1} - ${conv.title}]\n${msgs}\n`;
+            });
+
+            if (!contextSummary.trim()) {
+                const fallback: Prediction[] = [{
+                    type: 'suggestion',
+                    content: 'Ich bin bereit! Erzaehl mir, woran du gerade arbeitest.',
+                    confidence: 0.9,
+                    category: 'Start',
+                    priority: 'high',
+                }];
+                return fallback;
+            }
+
+            // AI-basierte Vorhersagen
+            const prompt = `Du bist 'Neon', ein proaktiver KI-Assistent.
+Analysiere die letzten Konversationen und generiere 3 hilfreiche Vorschlaege.
+
+Regeln:
+- Nur valides JSON ausgeben, keine Markdown-Formatierung
+- Sprache: Deutsch
+- Sei spezifisch, nicht generisch
+- Max 3 Eintraege
+
+Format: JSON-Array mit Objekten:
+[{"type":"question"|"task"|"suggestion","content":"Text","confidence":0.0-1.0,"category":"Label","priority":"high"|"medium"|"low"}]
+
+Konversationen:
+${contextSummary.slice(0, 3000)}
+
+JSON:`;
+
+            const response = await aiRouter.route(prompt, [], 'ollama');
+            let jsonString = response.content.replace(/```json/g, '').replace(/```/g, '').trim();
 
             const predictions = JSON.parse(jsonString);
 
-            // Validate basic structure
             if (Array.isArray(predictions)) {
-                return predictions.sort((a: any, b: any) => b.confidence - a.confidence);
+                const sorted = predictions
+                    .slice(0, 3)
+                    .sort((a: any, b: any) => b.confidence - a.confidence);
+
+                predictionCache.set(`predict-${userId}`, sorted);
+                return sorted;
             }
 
-            throw new Error("Invalid JSON structure");
-
+            throw new Error('Kein gueltiges JSON-Array');
         } catch (error) {
-            console.error("AI Prediction failed, falling back to simple logic", error);
-
-            // Fallback Logic (Time-based)
-            const hour = new Date().getHours();
-            const fallback = [];
-
-            if (hour < 12) {
-                fallback.push({
-                    type: 'task',
-                    content: 'Guten Morgen! Was sind deine Hauptziele für heute?',
-                    confidence: 0.8,
-                    category: 'Planung',
-                    priority: 'high'
-                });
-            } else {
-                fallback.push({
-                    type: 'suggestion',
-                    content: 'Wie läuft dein Tag bisher? Gibt es Blockaden?',
-                    confidence: 0.7,
-                    category: 'Check-in',
-                    priority: 'medium'
-                });
-            }
-            return fallback;
+            logger.debug('KI-Vorhersage fehlgeschlagen, nutze Fallback-Logik', { error });
+            return this.getFallbackPredictions();
         }
     }
 
+    /**
+     * Zeitbasierte Fallback-Vorhersagen
+     */
+    private getFallbackPredictions(): Prediction[] {
+        const hour = new Date().getHours();
+        const predictions: Prediction[] = [];
 
+        if (hour >= 6 && hour < 12) {
+            predictions.push({
+                type: 'task',
+                content: 'Guten Morgen! Was sind deine Hauptziele fuer heute?',
+                confidence: 0.8,
+                category: 'Planung',
+                priority: 'high',
+            });
+        } else if (hour >= 12 && hour < 14) {
+            predictions.push({
+                type: 'suggestion',
+                content: 'Mittagspause? Soll ich dir eine Zusammenfassung deines Vormittags geben?',
+                confidence: 0.6,
+                category: 'Check-in',
+                priority: 'medium',
+            });
+        } else if (hour >= 14 && hour < 18) {
+            predictions.push({
+                type: 'suggestion',
+                content: 'Wie laeuft dein Tag? Gibt es Blockaden bei deinen aktuellen Aufgaben?',
+                confidence: 0.7,
+                category: 'Check-in',
+                priority: 'medium',
+            });
+        } else if (hour >= 18 && hour < 22) {
+            predictions.push({
+                type: 'question',
+                content: 'Feierabend-Modus! Moechtest du etwas Neues lernen oder einfach plaudern?',
+                confidence: 0.6,
+                category: 'Freizeit',
+                priority: 'low',
+            });
+        } else {
+            predictions.push({
+                type: 'suggestion',
+                content: 'Spaete Stunde — brauchst du Hilfe bei etwas oder ist alles erledigt?',
+                confidence: 0.5,
+                category: 'Check-in',
+                priority: 'low',
+            });
+        }
+
+        return predictions;
+    }
 
     /**
-     * Predict user needs based on context
+     * Kontextbasierte Beduerfnisse vorhersagen
      */
     async predictUserNeeds(_userId: string, context: string): Promise<string[]> {
-        // Simple context-based predictions
+        const lowerCtx = context.toLowerCase();
         const needs: string[] = [];
 
-        if (context.includes('code') || context.includes('programmier')) {
-            needs.push('Code-Beispiele');
-            needs.push('Dokumentation');
-            needs.push('Best Practices');
+        // Coding-Kontext
+        if (/code|programmier|function|bug|error|debug/.test(lowerCtx)) {
+            needs.push('Code-Beispiele', 'Dokumentation', 'Best Practices');
         }
 
-        if (context.includes('problem') || context.includes('fehler')) {
-            needs.push('Schritt-für-Schritt Lösung');
-            needs.push('Alternative Ansätze');
-            needs.push('Debugging-Tipps');
+        // Problem-Kontext
+        if (/problem|fehler|geht nicht|funktioniert nicht|kaputt/.test(lowerCtx)) {
+            needs.push('Schritt-fuer-Schritt Loesung', 'Alternative Ansaetze', 'Debugging-Tipps');
         }
 
-        if (context.includes('lernen') || context.includes('verstehen')) {
-            needs.push('Einfache Erklärung');
-            needs.push('Beispiele');
-            needs.push('Übungen');
+        // Lern-Kontext
+        if (/lernen|verstehen|erklär|tutorial|wie geht/.test(lowerCtx)) {
+            needs.push('Einfache Erklaerung', 'Praktische Beispiele', 'Uebungen');
+        }
+
+        // Planungs-Kontext
+        if (/plan|projekt|ziel|strategie|roadmap/.test(lowerCtx)) {
+            needs.push('Strukturierte Planung', 'Meilensteine', 'Risiko-Analyse');
+        }
+
+        // Kreativ-Kontext
+        if (/idee|kreativ|brainstorm|design|konzept/.test(lowerCtx)) {
+            needs.push('Inspiration', 'Kreative Ansaetze', 'Referenzen');
         }
 
         return needs;

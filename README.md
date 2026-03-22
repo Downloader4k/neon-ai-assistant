@@ -247,25 +247,20 @@ socket.on('ai-response-complete', ({ conversationId }))
 
 | Phase | Feature | Status | Details |
 |-------|---------|--------|---------|
-| 8 | Voice I/O | Frontend fertig | Browser Web Speech API funktioniert. Backend Whisper noch nicht angebunden |
+| 8 | Voice I/O | Funktioniert | Browser Web Speech API (STT + TTS) mit visueller Aufnahme-/Wiedergabe-Anzeige |
 | 12 | Code-Tools | Basis fertig | Code-Ausfuehrung mit Guardrails. Erweiterte Dev-Features ausstehend |
 | 14 | Web-Suche & Skills | Basis fertig | DuckDuckGo + Wikipedia + Wetter. Weitere Integrationen geplant |
-| 16 | Security | Basis fertig | Input Sanitization, Helmet, CORS. Auth-System fuer Netzwerk noch ausstehend |
-
-### Geplant
-
-| Phase | Feature | Status |
-|-------|---------|--------|
-| 15 | Performance-Optimierung (GPU-Embeddings, Caching) | Offen |
-| 17 | Magic Features (Emotion Tracking, Predictive, Time Capsules) | Teilweise vorhanden |
+| 15 | Performance-Optimierung | Infrastruktur vorhanden | Cache-Klasse und PerformanceMonitor gebaut, Integration in Services ausstehend |
+| 16 | Security | Fertig | Token-basierte Auth (API + Admin), Rate-Limiting, XSS-Sanitizing, Helmet, CORS |
+| 17 | Magic Features | Grossteils fertig | Emotion Tracking, Time Capsules fertig. PredictiveService teilweise |
 
 ### Naechste Schritte
 
-- Auth-System fuer sicheren Netzwerk-Zugriff
 - Responsive Design (Mobile-Optimierung)
 - Multi-Modell-Routing (Code-Modell + Chat-Modell)
 - CI/CD Pipeline (GitHub Actions)
 - Unit Tests fuer Kern-Services
+- Whisper STT Integration (Backend)
 
 ---
 

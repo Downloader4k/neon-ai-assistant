@@ -6,7 +6,6 @@ import {
   Activity,
   RefreshCw,
   Server,
-  HardDrive,
   BarChart3,
   Brain,
   MessageSquare,
@@ -16,19 +15,15 @@ import { useAppStore } from '../store/useAppStore';
 
 interface SystemStats {
   database: {
-    totalRecords: number;
-    memoryUsage: string;
-    connections: number;
+    totalMemories: number;
+    totalMessages: number;
+    totalConversations: number;
+    totalUsers: number;
   };
   api: {
     totalRequests: number;
-    avgResponseTime: string;
-    errorRate: string;
-  };
-  cache: {
-    hitRate: string;
-    size: string;
-    entries: number;
+    totalTokens: number;
+    totalCostUsd: number;
   };
 }
 
@@ -112,19 +107,15 @@ export default function AdminPanel({ onStartChat }: { onStartChat: (msg: string)
 
   const [stats, setStats] = useState<SystemStats>({
     database: {
-      totalRecords: 0,
-      memoryUsage: 'Loading...',
-      connections: 0,
+      totalMemories: 0,
+      totalMessages: 0,
+      totalConversations: 0,
+      totalUsers: 0,
     },
     api: {
       totalRequests: 0,
-      avgResponseTime: '0ms',
-      errorRate: '0%',
-    },
-    cache: {
-      hitRate: '0%',
-      size: '0 MB',
-      entries: 0,
+      totalTokens: 0,
+      totalCostUsd: 0,
     },
   });
 
@@ -290,9 +281,20 @@ export default function AdminPanel({ onStartChat }: { onStartChat: (msg: string)
                 <Database size={24} />
               </div>
               <div className="stat-content">
-                <div className="stat-label">Datenbank</div>
-                <div className="stat-value">{stats.database.totalRecords.toLocaleString()}</div>
-                <div className="stat-sublabel">Einträge</div>
+                <div className="stat-label">Erinnerungen</div>
+                <div className="stat-value">{stats.database.totalMemories.toLocaleString()}</div>
+                <div className="stat-sublabel">Aktive Memories</div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-icon">
+                <MessageSquare size={24} />
+              </div>
+              <div className="stat-content">
+                <div className="stat-label">Nachrichten</div>
+                <div className="stat-value">{stats.database.totalMessages.toLocaleString()}</div>
+                <div className="stat-sublabel">Gesamt</div>
               </div>
             </div>
 
@@ -304,17 +306,6 @@ export default function AdminPanel({ onStartChat }: { onStartChat: (msg: string)
                 <div className="stat-label">API Requests</div>
                 <div className="stat-value">{stats.api.totalRequests.toLocaleString()}</div>
                 <div className="stat-sublabel">Total</div>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon">
-                <HardDrive size={24} />
-              </div>
-              <div className="stat-content">
-                <div className="stat-label">Cache</div>
-                <div className="stat-value">{stats.cache.hitRate}</div>
-                <div className="stat-sublabel">Hit Rate</div>
               </div>
             </div>
 
@@ -338,16 +329,20 @@ export default function AdminPanel({ onStartChat }: { onStartChat: (msg: string)
               </h3>
               <div className="detail-list">
                 <div className="detail-item">
-                  <span>Speichernutzung:</span>
-                  <strong>{stats.database.memoryUsage}</strong>
+                  <span>Erinnerungen:</span>
+                  <strong>{stats.database.totalMemories.toLocaleString()}</strong>
                 </div>
                 <div className="detail-item">
-                  <span>Aktive Verbindungen:</span>
-                  <strong>{stats.database.connections}</strong>
+                  <span>Nachrichten:</span>
+                  <strong>{stats.database.totalMessages.toLocaleString()}</strong>
                 </div>
                 <div className="detail-item">
-                  <span>Gesamteinträge:</span>
-                  <strong>{stats.database.totalRecords.toLocaleString()}</strong>
+                  <span>Unterhaltungen:</span>
+                  <strong>{stats.database.totalConversations.toLocaleString()}</strong>
+                </div>
+                <div className="detail-item">
+                  <span>Benutzer:</span>
+                  <strong>{stats.database.totalUsers.toLocaleString()}</strong>
                 </div>
               </div>
             </div>
@@ -355,20 +350,20 @@ export default function AdminPanel({ onStartChat }: { onStartChat: (msg: string)
             <div className="detail-card">
               <h3>
                 <BarChart3 size={20} />
-                Performance Metriken
+                API Nutzung
               </h3>
               <div className="detail-list">
                 <div className="detail-item">
-                  <span>Fehlerrate:</span>
-                  <strong className="success">{stats.api.errorRate}</strong>
+                  <span>Anfragen:</span>
+                  <strong>{stats.api.totalRequests.toLocaleString()}</strong>
                 </div>
                 <div className="detail-item">
-                  <span>Cache-Größe:</span>
-                  <strong>{stats.cache.size}</strong>
+                  <span>Tokens verbraucht:</span>
+                  <strong>{stats.api.totalTokens.toLocaleString()}</strong>
                 </div>
                 <div className="detail-item">
-                  <span>Cache-Einträge:</span>
-                  <strong>{stats.cache.entries.toLocaleString()}</strong>
+                  <span>Kosten (USD):</span>
+                  <strong className="success">${stats.api.totalCostUsd.toFixed(4)}</strong>
                 </div>
               </div>
             </div>

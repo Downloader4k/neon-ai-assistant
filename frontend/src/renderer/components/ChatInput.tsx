@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppStore, Attachment } from '../store/useAppStore';
 import { Send, X } from 'lucide-react';
 import { AttachmentMenu } from './AttachmentMenu';
 import { EmojiMenu } from './EmojiMenu';
+import VoiceControls from './VoiceControls';
 
 export default function ChatInput() {
     const [input, setInput] = useState('');
@@ -67,6 +68,11 @@ export default function ChatInput() {
         }
     };
 
+    // Spracheingabe: Transkript in Eingabefeld einfuegen
+    const handleVoiceTranscript = useCallback((text: string) => {
+        setInput(prev => prev ? prev + ' ' + text : text);
+    }, []);
+
     const handleEmojiClick = (emoji: string) => {
         const textarea = textareaRef.current;
         if (!textarea) {
@@ -116,6 +122,7 @@ export default function ChatInput() {
                         onEmojiClick={handleEmojiClick}
                         direction="up"
                     />
+                    <VoiceControls onTranscript={handleVoiceTranscript} />
                 </div>
                 <textarea
                     ref={textareaRef}

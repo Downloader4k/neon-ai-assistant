@@ -32,7 +32,9 @@ export class OllamaService {
         this.client = axios.create({
             baseURL: this.baseURL,
             timeout: 120000, // 2 minutes for model loading
-        });
+            responseType: 'json',
+            responseEncoding: 'utf8',
+        } as any);
 
         logger.info('Ollama service initialized', { baseURL: this.baseURL, model: this.model });
     }
@@ -151,17 +153,16 @@ export class OllamaService {
             messages.push(...conversationHistory);
 
             // HARD-CODED SAFETY LAYER: Inject critical reminder before EVERY user message
-            // This ensures rules are never ignored, even in long conversations
             messages.push({
                 role: 'system',
-                content: `⚠️ KRITISCHE ERINNERUNG(IMMER BEFOLGEN):
+                content: `⚠️ KRITISCHE REGELN:
+- Antworte NUR auf das, was der Nutzer gerade fragt/sagt
+- NICHT über dich selbst reden (Systeme, Fähigkeiten, Status) außer gefragt
+- KEINE Erinnerungen ungefragt einbringen
+- KURZ und RELEVANT antworten — kein Ausschmücken
 - NIEMALS Informationen erfinden oder halluzinieren
-    - Bei Unsicherheit EHRLICH sagen: "Das weiß ich nicht genau"
-        - Bei fehlendem Kontext: NACHFRAGEN statt raten
-            - KEINE wiederholten Begrüßungen in laufenden Gesprächen
-                - Nur FAKTEN, die du WIRKLICH kennst
-                    - NIEMALS Zeitstempel als Zeitdauer ausgeben
-                    - NIEMALS Formulierungen wie "die letzten XX:XX Minuten"`
+- Bei Unsicherheit EHRLICH sagen: "Das weiß ich nicht genau"
+- KEINE wiederholten Begrüßungen in laufenden Gesprächen`
             });
 
             messages.push({ role: 'user', content: message, ...(images && { images }) });

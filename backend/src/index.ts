@@ -8,6 +8,7 @@ import { router as apiRoutes } from './api/routes';
 import { initializeWebSocket } from './api/websocket';
 import { connectDatabase } from './services/db/prisma';
 import { logger } from './utils/logger';
+import { rateLimitMiddleware, sanitizeMiddleware } from './middleware/auth';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -32,6 +33,10 @@ app.use(cors({
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public'))); // Serve static files from /public
 app.use(express.urlencoded({ extended: true }));
+
+// Security: Rate Limiting & Input Sanitization
+app.use('/api', rateLimitMiddleware);
+app.use('/api', sanitizeMiddleware);
 
 // Request logging
 app.use((req, _res, next) => {
