@@ -109,6 +109,7 @@ export const sendProgressToUser = (userId: string, data: { progress: number; sta
 };
 
 import { socketService } from '../services/socket/SocketService';
+import { getUserPersonality } from './settingsRoutes';
 
 export function initializeWebSocket(httpServer: HTTPServer): SocketIOServer {
     const io = socketService.initialize(httpServer, {
@@ -465,9 +466,11 @@ ${nextQuestion.isStageEnd ? '\n[Nach dieser Antwort: Fasse die Stufe kurz zusamm
                     }
                 }
 
-                // GENERATE SYSTEM PROMPT WITH POLICY
+                // GENERATE SYSTEM PROMPT WITH POLICY + PERSONALITY
+                const userPersonality = getUserPersonality(userId);
                 const fullSystemPrompt = promptService.buildSystemPrompt({
                     policy: activePolicy,
+                    personality: userPersonality,
                     dynamicInstructions: [] // Can be filled with e.g. "User is tired" later
                 });
 

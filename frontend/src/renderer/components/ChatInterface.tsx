@@ -1,9 +1,11 @@
-// import { useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import MessageList from './MessageList';
-import ChatInput from './ChatInput';
+import ChatInput, { ChatInputHandle } from './ChatInput';
 import TypingIndicator from './TypingIndicator';
 import SearchingIndicator from './SearchingIndicator';
+import ExportDropdown from './ExportDropdown';
+import { Upload } from 'lucide-react';
 
 export default function ChatInterface() {
     const currentConversation = useAppStore((state) => state.currentConversation);
@@ -12,9 +14,100 @@ export default function ChatInterface() {
     const isTyping = useAppStore((state) => state.isTyping);
     const searchStatus = useAppStore((state) => state.searchStatus);
 
+    const [isDragOver, setIsDragOver] = useState(false);
+    const dragCounterRef = useRef(0);
+    const chatInputRef = useRef<ChatInputHandle>(null);
+
+    const handleDragEnter = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounterRef.current++;
+        if (e.dataTransfer.types.includes('Files')) {
+            setIsDragOver(true);
+        }
+    }, []);
+
+    const handleDragLeave = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounterRef.current--;
+        if (dragCounterRef.current === 0) {
+            setIsDragOver(false);
+        }
+    }, []);
+
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+    }, []);
+
+    const handleDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounterRef.current = 0;
+        setIsDragOver(false);
+
+        const files = Array.from(e.dataTransfer.files);
+        if (files.length > 0 && chatInputRef.current) {
+            chatInputRef.current.addFiles(files);
+        }
+    }, []);
+
     return (
-        <div className="flex flex-col h-full bg-bg-primary overflow-hidden relative">
-            {/* Header is handled by App.tsx */}
+        <div
+            className="flex flex-col h-full bg-bg-primary overflow-hidden relative"
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+        >
+            {/* Drag-and-Drop Overlay */}
+            {isDragOver && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-bg-primary/80 backdrop-blur-sm transition-all duration-200 animate-in fade-in">
+                    <div className="flex flex-col items-center gap-4 p-10 rounded-2xl border-2 border-dashed border-primary/60 bg-primary/5">
+                        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Upload className="w-8 h-8 text-primary drop-shadow-neon" />
+                        </div>
+                        <div className="text-center">
+                            <p className="text-lg font-medium text-text-primary">
+                                Datei hier ablegen
+                            </p>
+                            <p className="text-sm text-text-secondary mt-1">
+                                Bilder, PDFs und Textdateien werden unterstützt
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Chat Header with Export */}
+            {currentConversation && currentConversation.messages.length > 0 && (
+                <div className="chat-header-bar">
+                    <span className="chat-header-title">{currentConversation.title || 'Unterhaltung'}</span>
+                    <ExportDropdown />
+                    <style>{`
+                        .chat-header-bar {
+                            display: flex;
+                            align-items: center;
+                            justify-content: space-between;
+                            padding: 0.5rem 1.5rem;
+                            border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
+                            background: var(--bg-secondary, #1a1a2e);
+                            flex-shrink: 0;
+                        }
+                        .chat-header-title {
+                            font-size: 0.875rem;
+                            font-weight: 500;
+                            color: var(--text-secondary, #a0a0a0);
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                            white-space: nowrap;
+                            flex: 1;
+                            margin-right: 0.75rem;
+                        }
+                    `}</style>
+                </div>
+            )}
 
             <div className="flex-1 overflow-hidden relative flex flex-col">
                 <MessageList messages={messages} />
@@ -36,7 +129,7 @@ export default function ChatInterface() {
 
             <div className="border-t border-border bg-bg-secondary/50 backdrop-blur-md w-full">
                 <div className="max-w-4xl mx-auto w-full">
-                    <ChatInput />
+                    <ChatInput ref={chatInputRef} />
                 </div>
             </div>
         </div>

@@ -21,11 +21,23 @@ NEON ist eine Web-App, die Claude AI und lokale LLMs (Ollama/Gemma3) kombiniert.
 - **Web-Suche** — DuckDuckGo + Wikipedia Integration
 - **Wetter** — OpenWeatherMap Integration
 - **Wissensbasis (RAG)** — Dokumente importieren und per KI durchsuchen
+- **Lokales Dateien-RAG** — Lokale Ordner indexieren und semantisch durchsuchen
 - **Emotion Tracking** — Stimmungserkennung in Gespraechen
 - **Admin Panel** — Memory-Management, Extraktion, API-Kosten-Tracking, Performance-Dashboard
 - **Code-Ausfuehrung** — JavaScript, Python, PowerShell in einer Sandbox
 - **Zeitkapseln** — Nachrichten an dein zukuenftiges Ich planen
 - **Auto-Learning** — Manuelle Recherche mit DuckDuckGo + Wikipedia, Ergebnisse werden im Gedaechtnis gespeichert
+- **Slash-Commands** — `/wetter`, `/suche`, `/code`, `/kapsel`, `/recherche`, `/memory`, `/hilfe` direkt im Chat
+- **Konversations-Export** — Chats als Markdown oder Text exportieren
+- **Dark/Light/OLED Themes** — 3 Farbschemata mit visueller Vorschau
+- **Drag & Drop** — Dateien direkt in den Chat ziehen (Bilder, PDFs, Text)
+- **Multi-User** — Mehrere Profile mit eigenen Avataren und separatem Gedaechtnis
+- **Sprach-Persoenlichkeiten** — 5 KI-Modi: Sachlich, Freundlich, Sarkastisch, Lehrer, Pirat
+- **Konversations-Verzweigung** — Ab jeder Nachricht einen alternativen Gespraechsverlauf starten
+- **Tagesrueckblick** — Automatische Zusammenfassung: Gespraeche, Recherchen, Zeitkapseln des Tages
+- **Agenten-Ketten** — Mehrstufige KI-Aufgaben: Recherche -> Zusammenfassung -> Gedaechtnis
+- **Whiteboard/Canvas** — Zeichnen, Formen, Text mit Undo/Redo und PNG-Export
+- **PWA** — Installierbar als App mit Push-Notifications und Offline-Support
 
 ---
 
@@ -111,7 +123,7 @@ neon-ai-assistant/
 │
 ├── frontend/               # React Web-App (Vite)
 │   ├── src/
-│   │   ├── components/     # 25+ UI Komponenten
+│   │   ├── components/     # 35+ UI Komponenten
 │   │   ├── store/          # Zustand State Management
 │   │   ├── services/       # STT, TTS
 │   │   └── styles/
@@ -220,6 +232,10 @@ GET  /api/admin/usage               # API-Kosten
 GET  /api/admin/performance          # Performance-Metriken
 POST /api/magic/capsules             # Zeitkapsel erstellen
 GET  /api/magic/capsules/:userId     # Zeitkapseln abrufen
+GET  /api/summary/daily              # Tages-Zusammenfassung
+POST /api/rag/index                  # Ordner indexieren (RAG)
+GET  /api/rag/search?q=query         # RAG-Suche
+GET  /api/rag/status                 # RAG-Status
 ```
 
 ### WebSocket
@@ -255,6 +271,23 @@ socket.on('ai-response-complete', ({ conversationId }))
 | 15 | Performance (Dashboard, MemoryMonitor, PerformanceMonitor) | Fertig |
 | 16 | Security (Token-Auth, Rate-Limiting, XSS, Helmet, CORS) | Fertig |
 | 17 | Magic Features (Emotion Tracking, Zeitkapseln, Predictive Assistant) | Fertig |
+
+### Neue Features (v2)
+
+| Feature | Beschreibung |
+|---------|-------------|
+| Slash-Commands | `/wetter`, `/suche`, `/code`, `/kapsel`, `/recherche`, `/memory`, `/hilfe` |
+| Konversations-Export | Markdown + Text Export |
+| Themes | Dark, Light, OLED mit visueller Vorschau |
+| Drag & Drop | Bilder, PDFs, Textdateien in den Chat ziehen |
+| Multi-User | Profile mit Avataren, separates Gedaechtnis |
+| Persoenlichkeiten | Sachlich, Freundlich, Sarkastisch, Lehrer, Pirat |
+| Konversations-Fork | Ab jeder Nachricht verzweigen |
+| Tagesrueckblick | Automatische Tages-Zusammenfassung |
+| Agenten-Ketten | Mehrstufige KI-Workflows |
+| Whiteboard | Zeichnen, Formen, Text, PNG-Export |
+| Dateien-RAG | Lokale Ordner indexieren und durchsuchen |
+| PWA | Installierbar, Push-Notifications, Offline |
 
 ### Naechste Schritte
 

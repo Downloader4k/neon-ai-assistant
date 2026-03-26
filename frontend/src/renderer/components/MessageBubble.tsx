@@ -5,7 +5,7 @@ import rehypeHighlight from 'rehype-highlight';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import 'highlight.js/styles/github-dark.css';
-import { Copy, Check, Sparkles, User, Trash2, Bookmark, Calendar, Cpu, FileText } from 'lucide-react';
+import { Copy, Check, Sparkles, User, Trash2, Bookmark, Calendar, Cpu, FileText, GitBranch } from 'lucide-react';
 import { useState, memo, useEffect, useRef } from 'react';
 import { parseTwemoji } from '../utils/twemojiHelper';
 import WeatherCard from './WeatherCard';
@@ -35,6 +35,7 @@ function MessageBubble({ message }: MessageBubbleProps) {
 
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [deleteSuccess, setDeleteSuccess] = useState(false);
+    const [forkSuccess, setForkSuccess] = useState(false);
 
     const handleDelete = async () => {
         try {
@@ -51,6 +52,28 @@ function MessageBubble({ message }: MessageBubbleProps) {
         } catch (err) {
             console.error('Delete failed:', err);
         }
+    };
+
+    const handleFork = () => {
+        const conv = useAppStore.getState().currentConversation;
+        if (!conv) return;
+        // Get messages up to and including this one
+        const msgIndex = conv.messages.findIndex(m => m.id === message.id);
+        if (msgIndex < 0) return;
+        const forkedMessages = conv.messages.slice(0, msgIndex + 1).map(m => ({
+            ...m,
+            id: `fork-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        }));
+        // Create a forked conversation locally
+        const forkedConv = {
+            id: '', // new conversation, backend will assign
+            title: `${conv.title} (Verzweigung)`,
+            messages: forkedMessages,
+        };
+        useAppStore.getState().setCurrentConversation(forkedConv);
+        useAppStore.getState().setActiveView('chat');
+        setForkSuccess(true);
+        setTimeout(() => setForkSuccess(false), 1500);
     };
 
     const handleSaveToMemory = async () => {
@@ -237,6 +260,21 @@ function MessageBubble({ message }: MessageBubbleProps) {
 
                                 {/* Right: Action Buttons */}
                                 <div className="flex items-center gap-2">
+                                    {/* Fork Button */}
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleFork();
+                                        }}
+                                        className="p-1.5 hover:bg-bg-hover rounded-md transition-colors group/btn"
+                                        title="Ab hier verzweigen"
+                                    >
+                                        {forkSuccess ? (
+                                            <Check className="w-4 h-4 text-green-400" />
+                                        ) : (
+                                            <GitBranch className="w-4 h-4 text-text-secondary group-hover/btn:text-accent-primary transition-colors" />
+                                        )}
+                                    </button>
                                     {!isUser && (
                                         <button
                                             onClick={(e) => {

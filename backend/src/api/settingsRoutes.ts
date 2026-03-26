@@ -1,8 +1,44 @@
 import { Router } from 'express';
 import { aiRouter } from '../services/router/AIRouter';
 import { logger } from '../utils/logger';
+import { PERSONALITIES, PersonalityMode } from '../services/prompts/PromptService';
 
 const router = Router();
+
+// In-memory personality store (per user). In production this would be in a DB.
+const userPersonalities: Record<string, PersonalityMode> = {};
+
+export function getUserPersonality(userId: string): PersonalityMode {
+    return userPersonalities[userId] || 'freundlich';
+}
+
+// GET available personalities
+router.get('/personalities', (_req, res) => {
+    const list = Object.values(PERSONALITIES).map(p => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        icon: p.icon,
+    }));
+    res.json(list);
+});
+
+// GET current personality for a user
+router.get('/personality/:userId', (req, res) => {
+    const personality = getUserPersonality(req.params.userId);
+    res.json({ personality });
+});
+
+// POST set personality for a user
+router.post('/personality/:userId', (req, res) => {
+    const { personality } = req.body;
+    if (!personality || !PERSONALITIES[personality as PersonalityMode]) {
+        return res.status(400).json({ error: 'Ungueltige Persoenlichkeit' });
+    }
+    userPersonalities[req.params.userId] = personality as PersonalityMode;
+    logger.info('Personality updated', { userId: req.params.userId, personality });
+    res.json({ success: true, personality });
+});
 
 // GET current settings
 router.get('/', (_req, res) => {
@@ -17,6 +53,7 @@ router.get('/', (_req, res) => {
                 hybridMode: aiConfig.enableHybridMode,
                 privacyMode: aiConfig.privacyMode,
                 ollamaModel: aiConfig.ollamaModel,
+                personality: getUserPersonality('default-user'),
                 // These are stateless/env-based normally, but we return defaults
                 temperature: 0.7,
                 maxTokens: 2000,

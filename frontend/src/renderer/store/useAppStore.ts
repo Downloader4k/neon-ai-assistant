@@ -21,7 +21,48 @@ export interface Conversation {
     id: string;
     title: string;
     messages: Message[];
+    userId?: string;
 }
+
+export interface UserProfile {
+    id: string;
+    name: string;
+    avatar: string;
+}
+
+export type ViewMode = 'welcome' | 'chat' | 'admin' | 'memory' | 'search' | 'settings' | 'skills' | 'emotions' | 'predictive' | 'code' | 'capsules' | 'summary' | 'chains' | 'canvas' | 'rag';
+
+export type PersonalityMode = 'freundlich' | 'sachlich' | 'sarkastisch' | 'lehrer' | 'pirat';
+
+export interface PersonalityInfo {
+    id: PersonalityMode;
+    name: string;
+    description: string;
+    icon: string;
+}
+
+export const PERSONALITY_LIST: PersonalityInfo[] = [
+    { id: 'sachlich', name: 'Sachlich', description: 'Neutral, praezise, keine Emoticons', icon: 'Scale' },
+    { id: 'freundlich', name: 'Freundlich', description: 'Warm, hilfsbereit, ermutigend', icon: 'Smile' },
+    { id: 'sarkastisch', name: 'Sarkastisch', description: 'Witzig, ironisch, aber hilfreich', icon: 'Laugh' },
+    { id: 'lehrer', name: 'Lehrer', description: 'Erklaert ausfuehrlich, Gegenfragen', icon: 'GraduationCap' },
+    { id: 'pirat', name: 'Pirat', description: 'Spricht wie ein Pirat, Arrr!', icon: 'Skull' },
+];
+
+// Load persisted users from localStorage
+const loadPersistedUsers = (): UserProfile[] => {
+    try {
+        const stored = localStorage.getItem('neon-users');
+        if (stored) return JSON.parse(stored);
+    } catch {}
+    const defaults: UserProfile[] = [{ id: 'default-user', name: 'Thorben', avatar: '👤' }];
+    localStorage.setItem('neon-users', JSON.stringify(defaults));
+    return defaults;
+};
+
+const loadCurrentUserId = (): string => {
+    return localStorage.getItem('neon-current-user-id') || 'default-user';
+};
 
 interface AppState {
     socket: Socket | null;
@@ -33,9 +74,14 @@ interface AppState {
     searchStatus: string | null;
     searchModalOpen: boolean;
     isLearningMode: boolean;
+    activeView: ViewMode;
 
     // New Feature: Pinned Chats
     pinnedIds: string[];
+
+    // Multi-User
+    currentUser: UserProfile;
+    users: UserProfile[];
 
     initializeSocket: () => void;
     sendMessage: (message: string, attachments?: Attachment[]) => void;
@@ -47,17 +93,29 @@ interface AppState {
     updateLastMessage: (content: string, model?: string) => void;
     setSearchModalOpen: (open: boolean) => void;
     toggleLearningMode: () => void;
+    setActiveView: (view: ViewMode) => void;
 
     // New Actions
     togglePinConversation: (id: string) => void;
     renameConversation: (id: string, newTitle: string) => void;
+
+    // Multi-User Actions
+    switchUser: (userId: string) => void;
+    createUser: (name: string, avatar: string) => void;
+
+    // Personality
+    personality: PersonalityMode;
+    setPersonality: (personality: PersonalityMode) => void;
 }
 
 // Auto-detect backend URL: use current hostname for network access
 const SOCKET_URL = window.location.port === '5173'
     ? `http://${window.location.hostname}:3001`  // Dev: Vite proxy or direct
     : window.location.origin;                     // Prod: same origin
-const USER_ID = 'default-user';
+
+const _initialUsers = loadPersistedUsers();
+const _initialUserId = loadCurrentUserId();
+const _initialCurrentUser = _initialUsers.find(u => u.id === _initialUserId) || _initialUsers[0];
 
 export const useAppStore = create<AppState>((set, get) => ({
     socket: null,
@@ -69,7 +127,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     searchStatus: null,
     searchModalOpen: false,
     isLearningMode: false,
+    activeView: 'welcome',
     pinnedIds: JSON.parse(localStorage.getItem('pinnedIds') || '[]'),
+    currentUser: _initialCurrentUser,
+    users: _initialUsers,
+    personality: (localStorage.getItem('neon-personality') as PersonalityMode) || 'freundlich',
 
     initializeSocket: () => {
         const socket = io(SOCKET_URL);
@@ -78,7 +140,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             console.log('Connected to backend');
             set({ isConnected: true, socket });
             // Register user for notifications
-            socket.emit('register-user', { userId: USER_ID });
+            socket.emit('register-user', { userId: get().currentUser.id });
         });
 
         socket.on('disconnect', () => {
@@ -172,7 +234,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     },
 
     sendMessage: (message: string, attachments?: Attachment[]) => {
-        const { socket, currentConversation, isLearningMode } = get();
+        const { socket, currentConversation, isLearningMode, currentUser, personality } = get();
         if (!socket) return;
 
         // Construct payload
@@ -180,8 +242,9 @@ export const useAppStore = create<AppState>((set, get) => ({
             message,
             attachments,
             conversationId: currentConversation?.id,
-            userId: USER_ID,
-            isLearning: isLearningMode
+            userId: currentUser.id,
+            isLearning: isLearningMode,
+            personality: personality,
         };
 
         // Emit
@@ -232,10 +295,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     },
 
     loadConversations: () => {
-        const { socket } = get();
+        const { socket, currentUser } = get();
         if (!socket) return;
-        // User ID is hardcoded for now, should be dynamic later
-        socket.emit('get-conversations', { userId: USER_ID });
+        socket.emit('get-conversations', { userId: currentUser.id });
     },
 
     deleteConversation: (conversationId: string) => {
@@ -342,5 +404,35 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     toggleLearningMode: () => {
         set((state) => ({ isLearningMode: !state.isLearningMode }));
+    },
+
+    setActiveView: (view: ViewMode) => {
+        set({ activeView: view });
+    },
+
+    switchUser: (userId: string) => {
+        const { users, socket } = get();
+        const user = users.find(u => u.id === userId);
+        if (!user) return;
+        localStorage.setItem('neon-current-user-id', userId);
+        set({ currentUser: user, currentConversation: null, activeView: 'welcome' });
+        // Re-register and reload conversations for new user
+        if (socket) {
+            socket.emit('register-user', { userId });
+            socket.emit('get-conversations', { userId });
+        }
+    },
+
+    createUser: (name: string, avatar: string) => {
+        const id = `user-${Date.now()}`;
+        const newUser: UserProfile = { id, name, avatar };
+        const updatedUsers = [...get().users, newUser];
+        localStorage.setItem('neon-users', JSON.stringify(updatedUsers));
+        set({ users: updatedUsers });
+    },
+
+    setPersonality: (personality: PersonalityMode) => {
+        localStorage.setItem('neon-personality', personality);
+        set({ personality });
     },
 }));

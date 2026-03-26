@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Settings, Sliders, Lock, Palette, Keyboard } from 'lucide-react';
+import { Settings, Sliders, Lock, Palette, Keyboard, Check } from 'lucide-react';
+import { useAppStore, PERSONALITY_LIST } from '../store/useAppStore';
 
 interface SettingsCategory {
     id: string;
@@ -42,6 +43,16 @@ export default function SettingsPanel() {
             voice: 'Ctrl+M',
         },
     });
+
+    // Load saved theme from localStorage on mount
+    useEffect(() => {
+        const savedTheme = localStorage.getItem('neon-theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        setSettings(prev => ({
+            ...prev,
+            appearance: { ...prev.appearance, theme: savedTheme }
+        }));
+    }, []);
 
     useEffect(() => {
         // Fetch current settings on mount
@@ -231,6 +242,33 @@ export default function SettingsPanel() {
                                     />
                                 </div>
 
+                                {/* Persoenlichkeit */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-3">Persoenlichkeit</label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {PERSONALITY_LIST.map((p) => {
+                                            const isActive = useAppStore.getState().personality === p.id;
+                                            return (
+                                                <button
+                                                    key={p.id}
+                                                    onClick={() => useAppStore.getState().setPersonality(p.id)}
+                                                    className="flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-left"
+                                                    style={{
+                                                        borderColor: isActive ? 'var(--accent-primary)' : 'var(--border-subtle)',
+                                                        background: isActive ? 'rgba(249,171,0,0.08)' : 'var(--bg-tertiary)',
+                                                    }}
+                                                >
+                                                    <span className="text-xl">{p.icon === 'Scale' ? '⚖️' : p.icon === 'Smile' ? '😊' : p.icon === 'Laugh' ? '😏' : p.icon === 'GraduationCap' ? '🎓' : '☠️'}</span>
+                                                    <div>
+                                                        <div className="text-sm font-semibold" style={{ color: isActive ? 'var(--accent-primary)' : 'var(--text-primary)' }}>{p.name}</div>
+                                                        <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{p.description}</div>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
                                 <div className="flex items-center justify-between">
                                     <span>Datenschutz-Modus (nur lokal)</span>
                                     <input
@@ -290,16 +328,92 @@ export default function SettingsPanel() {
                                 <h2 className="text-2xl font-bold mb-4">Erscheinungsbild</h2>
 
                                 <div>
-                                    <label className="block text-sm font-medium mb-2">Theme</label>
-                                    <select
-                                        value={settings.appearance.theme}
-                                        onChange={(e) => updateSetting('appearance', 'theme', e.target.value)}
-                                        className="w-full px-4 py-2 bg-bg-tertiary border border-border rounded-lg"
-                                    >
-                                        <option value="dark">Dunkel</option>
-                                        <option value="light">Hell</option>
-                                        <option value="auto">Automatisch</option>
-                                    </select>
+                                    <label className="block text-sm font-medium mb-3">Farbschema</label>
+                                    <div className="grid grid-cols-3 gap-4">
+                                        {([
+                                            {
+                                                id: 'dark',
+                                                label: 'Dunkel',
+                                                desc: 'Standard-Design',
+                                                colors: { bg: '#0f0f0f', card: '#1a1a1a', accent: '#f9ab00', text: '#e0e0e0', border: '#333' },
+                                            },
+                                            {
+                                                id: 'light',
+                                                label: 'Hell',
+                                                desc: 'Heller Hintergrund',
+                                                colors: { bg: '#f5f5f5', card: '#ffffff', accent: '#e89800', text: '#1a1a1a', border: '#d0d0d0' },
+                                            },
+                                            {
+                                                id: 'oled',
+                                                label: 'OLED',
+                                                desc: 'Reines Schwarz',
+                                                colors: { bg: '#000000', card: '#0a0a0a', accent: '#f9ab00', text: '#e8e8e8', border: '#1a1a1a' },
+                                            },
+                                        ] as const).map((theme) => {
+                                            const isActive = settings.appearance.theme === theme.id;
+                                            return (
+                                                <button
+                                                    key={theme.id}
+                                                    onClick={() => {
+                                                        updateSetting('appearance', 'theme', theme.id);
+                                                        document.documentElement.setAttribute('data-theme', theme.id);
+                                                        localStorage.setItem('neon-theme', theme.id);
+                                                    }}
+                                                    className="relative flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-200"
+                                                    style={{
+                                                        borderColor: isActive ? theme.colors.accent : 'var(--border-subtle)',
+                                                        background: isActive ? 'var(--accent-light)' : 'var(--bg-tertiary)',
+                                                    }}
+                                                >
+                                                    {/* Preview block */}
+                                                    <div
+                                                        className="w-full h-20 rounded-lg mb-3 overflow-hidden border"
+                                                        style={{ background: theme.colors.bg, borderColor: theme.colors.border }}
+                                                    >
+                                                        {/* Mini UI preview */}
+                                                        <div className="flex h-full">
+                                                            {/* Sidebar preview */}
+                                                            <div
+                                                                className="w-1/4 h-full"
+                                                                style={{ background: theme.colors.card, borderRight: `1px solid ${theme.colors.border}` }}
+                                                            >
+                                                                <div className="mt-2 mx-1">
+                                                                    <div className="h-1.5 rounded" style={{ background: theme.colors.accent, width: '60%' }} />
+                                                                    <div className="h-1 mt-1.5 rounded" style={{ background: theme.colors.text, opacity: 0.3, width: '80%' }} />
+                                                                    <div className="h-1 mt-1 rounded" style={{ background: theme.colors.text, opacity: 0.2, width: '70%' }} />
+                                                                    <div className="h-1 mt-1 rounded" style={{ background: theme.colors.text, opacity: 0.2, width: '50%' }} />
+                                                                </div>
+                                                            </div>
+                                                            {/* Content preview */}
+                                                            <div className="flex-1 p-2 flex flex-col justify-center items-center gap-1.5">
+                                                                <div className="h-1.5 rounded" style={{ background: theme.colors.text, opacity: 0.4, width: '70%' }} />
+                                                                <div className="h-1.5 rounded" style={{ background: theme.colors.text, opacity: 0.25, width: '50%' }} />
+                                                                <div className="h-3 mt-1 rounded" style={{ background: theme.colors.accent, width: '40%', opacity: 0.8 }} />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Label */}
+                                                    <span className="text-sm font-semibold" style={{ color: isActive ? theme.colors.accent : 'var(--text-primary)' }}>
+                                                        {theme.label}
+                                                    </span>
+                                                    <span className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                                                        {theme.desc}
+                                                    </span>
+
+                                                    {/* Active check badge */}
+                                                    {isActive && (
+                                                        <div
+                                                            className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center"
+                                                            style={{ background: theme.colors.accent }}
+                                                        >
+                                                            <Check size={12} color="#000" strokeWidth={3} />
+                                                        </div>
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
 
                                 <div>

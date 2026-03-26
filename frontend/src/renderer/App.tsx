@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { useAppStore } from './store/useAppStore';
+import { useAppStore, ViewMode } from './store/useAppStore';
 import {
   Sparkles, Settings, Trash2,
   Brain, Lightbulb, Activity, Puzzle, Search, Shield, ChevronDown, ChevronRight, Wrench,
-  PanelLeft, SquarePen, Pin, PinOff, Edit2, Terminal, Gift
+  PanelLeft, SquarePen, Pin, PinOff, Edit2, Terminal, Gift, BarChart3, Link, Pen, FolderSearch
 } from 'lucide-react';
 import ChatInterface from './components/ChatInterface';
 import WelcomeScreen from './components/WelcomeScreen';
@@ -17,17 +17,21 @@ import EmotionDashboard from './components/EmotionDashboard';
 import PredictiveAssistant from './components/PredictiveAssistant';
 import CodeExecutor from './components/CodeExecutor';
 import TimeCapsules from './components/TimeCapsules';
+import DailySummary from './components/DailySummary';
+import AgentChains from './components/AgentChains';
+import CanvasBoard from './components/CanvasBoard';
+import LocalRAG from './components/LocalRAG';
 import ProactiveNotifications from './components/ProactiveNotifications';
+import UserSwitcher from './components/UserSwitcher';
 import './index.css';
-
-type ViewMode = 'welcome' | 'chat' | 'admin' | 'memory' | 'search' | 'settings' | 'skills' | 'emotions' | 'predictive' | 'code' | 'capsules';
 
 export default function App() {
   const initializeSocket = useAppStore((state) => state.initializeSocket);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
 
-  const [activeView, setActiveView] = useState<ViewMode>('welcome');
+  const activeView = useAppStore((state) => state.activeView);
+  const setActiveView = useAppStore((state) => state.setActiveView);
   const activeConversation = useAppStore((state) => state.currentConversation?.id || null);
   const conversations = useAppStore((state) => state.conversations);
   const loadConversations = useAppStore((state) => state.loadConversations);
@@ -46,6 +50,12 @@ export default function App() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const editInputRef = useRef<HTMLInputElement>(null);
+
+  // Apply saved theme on app startup
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('neon-theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+  }, []);
 
   useEffect(() => {
     initializeSocket();
@@ -127,6 +137,10 @@ export default function App() {
       case 'predictive': return <PredictiveAssistant onAcceptPrediction={(text) => { useAppStore.getState().setCurrentConversation(null); useAppStore.getState().sendMessage(text); setActiveView('chat'); }} />;
       case 'code': return <CodeExecutor />;
       case 'capsules': return <TimeCapsules />;
+      case 'summary': return <DailySummary />;
+      case 'chains': return <AgentChains />;
+      case 'canvas': return <CanvasBoard />;
+      case 'rag': return <LocalRAG />;
       default: return <WelcomeScreen onStartChat={startNewChat} />;
     }
   };
@@ -265,7 +279,7 @@ export default function App() {
           {/* Tools Group */}
           <div className="tools-group px-2 mb-1">
             <button
-              className={`nav-item w-full ${['memory', 'emotions', 'predictive', 'capsules', 'skills', 'admin', 'code'].includes(activeView) ? 'active' : ''} ${!sidebarOpen ? 'justify-center px-0' : ''}`}
+              className={`nav-item w-full ${['memory', 'emotions', 'predictive', 'capsules', 'skills', 'admin', 'code', 'summary', 'chains', 'canvas', 'rag'].includes(activeView) ? 'active' : ''} ${!sidebarOpen ? 'justify-center px-0' : ''}`}
               onClick={() => sidebarOpen ? setIsToolsOpen(!isToolsOpen) : setActiveView('memory')}
               title="Werkzeuge"
             >
@@ -287,6 +301,10 @@ export default function App() {
                   { id: 'capsules', icon: Gift, label: 'Zeitkapseln' },
                   { id: 'skills', icon: Puzzle, label: 'Skills' },
                   { id: 'code', icon: Terminal, label: 'Code-Tools' },
+                  { id: 'summary', icon: BarChart3, label: 'Tagesrueckblick' },
+                  { id: 'chains', icon: Link, label: 'Agenten-Ketten' },
+                  { id: 'canvas', icon: Pen, label: 'Whiteboard' },
+                  { id: 'rag', icon: FolderSearch, label: 'Dateien-RAG' },
                   { id: 'admin', icon: Shield, label: 'Admin' }
                 ].map(tool => (
                   <button
@@ -311,6 +329,11 @@ export default function App() {
               <Settings size={20} />
               {sidebarOpen && <span className="ml-3">Einstellungen</span>}
             </button>
+          </div>
+
+          {/* User Switcher */}
+          <div className="px-2 pb-2 mt-1 border-t border-border-subtle pt-2">
+            <UserSwitcher sidebarOpen={sidebarOpen} />
           </div>
         </div>
       </aside>

@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEON - AI Assistant</title>
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#f9ab00" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="/logo-32.png">
@@ -16,5 +18,19 @@
 <body>
   <div id="root"></div>
   <script type="module" src="/src/renderer/main.tsx"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', async () => {
+        try {
+          await navigator.serviceWorker.register('/sw.js');
+          if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+          }
+        } catch (e) {
+          console.warn('SW registration failed:', e);
+        }
+      });
+    }
+  </script>
 </body>
 </html>
