@@ -3,8 +3,7 @@ import { useAppStore, ViewMode } from './store/useAppStore';
 import {
   Sparkles, Settings, Trash2,
   Brain, Lightbulb, Activity, Puzzle, Search, Shield, ChevronDown, ChevronRight, Wrench,
-  PanelLeft, SquarePen, Pin, PinOff, Edit2, Terminal, Gift, BarChart3, Link, Pen, FolderSearch, Compass,
-  Coffee, TrendingUp, Clock, Lock, BookOpen, Trophy
+  PanelLeft, SquarePen, Pin, PinOff, Edit2, Terminal, Compass
 } from 'lucide-react';
 import ChatInterface from './components/ChatInterface';
 import WelcomeScreen from './components/WelcomeScreen';
@@ -302,7 +301,7 @@ export default function App() {
           {/* Tools Group */}
           <div className="tools-group px-2 mb-1">
             <button
-              className={`nav-item w-full ${['memory', 'emotions', 'predictive', 'capsules', 'skills', 'admin', 'code', 'summary', 'chains', 'canvas', 'rag', 'briefing', 'radar', 'timeline', 'notes', 'diary', 'challenges'].includes(activeView) ? 'active' : ''} ${!sidebarOpen ? 'justify-center px-0' : ''}`}
+              className={`nav-item w-full ${['memory', 'emotions', 'predictive', 'skills', 'admin', 'code', 'capsules', 'summary', 'chains', 'canvas', 'rag', 'briefing', 'radar', 'timeline', 'notes', 'diary', 'challenges'].includes(activeView) ? 'active' : ''} ${!sidebarOpen ? 'justify-center px-0' : ''}`}
               onClick={() => sidebarOpen ? setIsToolsOpen(!isToolsOpen) : setActiveView('memory')}
               title="Werkzeuge"
             >
@@ -318,22 +317,11 @@ export default function App() {
             {sidebarOpen && isToolsOpen && (
               <div className="tools-subitems ml-4 mt-1 space-y-1">
                 {[
-                  { id: 'memory', icon: Brain, label: 'Gedächtnis' },
+                  { id: 'memory', icon: Brain, label: 'Gedaechtnis' },
                   { id: 'emotions', icon: Activity, label: 'Emotionen' },
                   { id: 'predictive', icon: Lightbulb, label: 'Vorhersagen' },
-                  { id: 'capsules', icon: Gift, label: 'Zeitkapseln' },
-                  { id: 'skills', icon: Puzzle, label: 'Skills' },
                   { id: 'code', icon: Terminal, label: 'Code-Tools' },
-                  { id: 'summary', icon: BarChart3, label: 'Tagesrueckblick' },
-                  { id: 'chains', icon: Link, label: 'Agenten-Ketten' },
-                  { id: 'canvas', icon: Pen, label: 'Whiteboard' },
-                  { id: 'rag', icon: FolderSearch, label: 'Dateien-RAG' },
-                  { id: 'briefing', icon: Coffee, label: 'Morgenbriefing' },
-                  { id: 'radar', icon: TrendingUp, label: 'Interessen-Radar' },
-                  { id: 'timeline', icon: Clock, label: 'Zeitstrahl' },
-                  { id: 'notes', icon: Lock, label: 'Geheime Notizen' },
-                  { id: 'diary', icon: BookOpen, label: 'KI-Tagebuch' },
-                  { id: 'challenges', icon: Trophy, label: 'Challenges' },
+                  { id: 'skills', icon: Puzzle, label: 'Skills & Features' },
                   { id: 'admin', icon: Shield, label: 'Admin' }
                 ].map(tool => (
                   <button
