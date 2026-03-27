@@ -3,7 +3,8 @@ import { useAppStore, ViewMode } from './store/useAppStore';
 import {
   Sparkles, Settings, Trash2,
   Brain, Lightbulb, Activity, Puzzle, Search, Shield, ChevronDown, ChevronRight, Wrench,
-  PanelLeft, SquarePen, Pin, PinOff, Edit2, Terminal, Gift, BarChart3, Link, Pen, FolderSearch, Compass
+  PanelLeft, SquarePen, Pin, PinOff, Edit2, Terminal, Gift, BarChart3, Link, Pen, FolderSearch, Compass,
+  Coffee, TrendingUp, Clock, Lock, BookOpen, Trophy
 } from 'lucide-react';
 import ChatInterface from './components/ChatInterface';
 import WelcomeScreen from './components/WelcomeScreen';
@@ -24,6 +25,12 @@ import LocalRAG from './components/LocalRAG';
 import ProactiveNotifications from './components/ProactiveNotifications';
 import UserSwitcher from './components/UserSwitcher';
 import DiscoverPage from './components/DiscoverPage';
+import MorningBriefing from './components/MorningBriefing';
+import PersonalityRadar from './components/PersonalityRadar';
+import ThoughtTimeline from './components/ThoughtTimeline';
+import SecretNotes from './components/SecretNotes';
+import AIDiary from './components/AIDiary';
+import ChallengeMode from './components/ChallengeMode';
 import './index.css';
 
 export default function App() {
@@ -143,6 +150,12 @@ export default function App() {
       case 'canvas': return <CanvasBoard />;
       case 'rag': return <LocalRAG />;
       case 'discover': return <DiscoverPage onStartChat={(msg) => { if (msg) startNewChat(msg); else startNewChat(); }} />;
+      case 'briefing': return <MorningBriefing onStartChat={(msg) => startNewChat(msg)} />;
+      case 'radar': return <PersonalityRadar />;
+      case 'timeline': return <ThoughtTimeline />;
+      case 'notes': return <SecretNotes />;
+      case 'diary': return <AIDiary />;
+      case 'challenges': return <ChallengeMode onStartChat={(msg) => startNewChat(msg)} />;
       default: return <WelcomeScreen onStartChat={startNewChat} />;
     }
   };
@@ -289,7 +302,7 @@ export default function App() {
           {/* Tools Group */}
           <div className="tools-group px-2 mb-1">
             <button
-              className={`nav-item w-full ${['memory', 'emotions', 'predictive', 'capsules', 'skills', 'admin', 'code', 'summary', 'chains', 'canvas', 'rag'].includes(activeView) ? 'active' : ''} ${!sidebarOpen ? 'justify-center px-0' : ''}`}
+              className={`nav-item w-full ${['memory', 'emotions', 'predictive', 'capsules', 'skills', 'admin', 'code', 'summary', 'chains', 'canvas', 'rag', 'briefing', 'radar', 'timeline', 'notes', 'diary', 'challenges'].includes(activeView) ? 'active' : ''} ${!sidebarOpen ? 'justify-center px-0' : ''}`}
               onClick={() => sidebarOpen ? setIsToolsOpen(!isToolsOpen) : setActiveView('memory')}
               title="Werkzeuge"
             >
@@ -315,6 +328,12 @@ export default function App() {
                   { id: 'chains', icon: Link, label: 'Agenten-Ketten' },
                   { id: 'canvas', icon: Pen, label: 'Whiteboard' },
                   { id: 'rag', icon: FolderSearch, label: 'Dateien-RAG' },
+                  { id: 'briefing', icon: Coffee, label: 'Morgenbriefing' },
+                  { id: 'radar', icon: TrendingUp, label: 'Interessen-Radar' },
+                  { id: 'timeline', icon: Clock, label: 'Zeitstrahl' },
+                  { id: 'notes', icon: Lock, label: 'Geheime Notizen' },
+                  { id: 'diary', icon: BookOpen, label: 'KI-Tagebuch' },
+                  { id: 'challenges', icon: Trophy, label: 'Challenges' },
                   { id: 'admin', icon: Shield, label: 'Admin' }
                 ].map(tool => (
                   <button

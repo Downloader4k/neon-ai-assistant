@@ -30,7 +30,7 @@ export interface UserProfile {
     avatar: string;
 }
 
-export type ViewMode = 'welcome' | 'chat' | 'admin' | 'memory' | 'search' | 'settings' | 'skills' | 'emotions' | 'predictive' | 'code' | 'capsules' | 'summary' | 'chains' | 'canvas' | 'rag' | 'discover';
+export type ViewMode = 'welcome' | 'chat' | 'admin' | 'memory' | 'search' | 'settings' | 'skills' | 'emotions' | 'predictive' | 'code' | 'capsules' | 'summary' | 'chains' | 'canvas' | 'rag' | 'discover' | 'briefing' | 'radar' | 'timeline' | 'notes' | 'diary' | 'challenges';
 
 export type PersonalityMode = 'freundlich' | 'sachlich' | 'sarkastisch' | 'lehrer' | 'pirat';
 

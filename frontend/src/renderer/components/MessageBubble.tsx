@@ -5,7 +5,7 @@ import rehypeHighlight from 'rehype-highlight';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import 'highlight.js/styles/github-dark.css';
-import { Copy, Check, Sparkles, User, Trash2, Bookmark, Calendar, Cpu, FileText, GitBranch } from 'lucide-react';
+import { Copy, Check, Sparkles, User, Trash2, Bookmark, Calendar, Cpu, FileText, GitBranch, GraduationCap } from 'lucide-react';
 import { useState, memo, useEffect, useRef } from 'react';
 import { parseTwemoji } from '../utils/twemojiHelper';
 import WeatherCard from './WeatherCard';
@@ -36,6 +36,16 @@ function MessageBubble({ message }: MessageBubbleProps) {
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [deleteSuccess, setDeleteSuccess] = useState(false);
     const [forkSuccess, setForkSuccess] = useState(false);
+    const [explainLevel, setExplainLevel] = useState<number | null>(null);
+
+    const handleExplainLevel = async (level: number) => {
+        setExplainLevel(level);
+        const levelNames = ['Kind (5 Jahre)', 'Schueler (12 Jahre)', 'Student', 'Fachperson', 'Experte (PhD)'];
+        const sendMessage = useAppStore.getState().sendMessage;
+        const prompt = `Erklaere die folgende Antwort nochmal auf dem Niveau "${levelNames[level]}": "${message.content.substring(0, 500)}"`;
+        sendMessage(prompt);
+        setExplainLevel(null);
+    };
 
     const handleDelete = async () => {
         try {
@@ -260,6 +270,39 @@ function MessageBubble({ message }: MessageBubbleProps) {
 
                                 {/* Right: Action Buttons */}
                                 <div className="flex items-center gap-2">
+                                    {/* Explain Level Button */}
+                                    {!isUser && (
+                                        <div className="relative" style={{ display: 'inline-flex' }}>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setExplainLevel(explainLevel !== null ? null : -1);
+                                                }}
+                                                className="p-1.5 hover:bg-bg-hover rounded-md transition-colors group/btn"
+                                                title="Erklaer-Level aendern"
+                                            >
+                                                <GraduationCap className="w-4 h-4 text-text-secondary group-hover/btn:text-accent-primary transition-colors" />
+                                            </button>
+                                            {explainLevel === -1 && (
+                                                <div
+                                                    className="absolute bottom-full right-0 mb-2 p-2 bg-bg-secondary border border-border-subtle rounded-lg shadow-lg z-50 animate-fade-in"
+                                                    style={{ minWidth: '180px' }}
+                                                    onClick={e => e.stopPropagation()}
+                                                >
+                                                    <div className="text-xs text-text-tertiary mb-1 px-1">Erklaer-Level:</div>
+                                                    {['Kind (5)', 'Schueler (12)', 'Student', 'Fachperson', 'Experte (PhD)'].map((l, i) => (
+                                                        <button
+                                                            key={i}
+                                                            className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-bg-hover text-text-primary transition-colors"
+                                                            onClick={() => { handleExplainLevel(i); setExplainLevel(null); }}
+                                                        >
+                                                            {'🎓'.repeat(i + 1)} {l}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                     {/* Fork Button */}
                                     <button
                                         onClick={(e) => {
