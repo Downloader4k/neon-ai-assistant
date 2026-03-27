@@ -353,4 +353,4 @@ MIT
 
 ---
 
-Gebaut von Thorben mit Claude AI.
+Gebaut von Downloader4k mit Claude AI.
