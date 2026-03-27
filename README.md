@@ -353,4 +353,4 @@ MIT
 
 ---
 
-Gebaut mit Claude AI, Ollama und TypeScript.
+Gebaut von Thorben mit Claude AI.
