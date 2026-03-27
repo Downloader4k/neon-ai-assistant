@@ -3,7 +3,7 @@ import { useAppStore, ViewMode } from './store/useAppStore';
 import {
   Sparkles, Settings, Trash2,
   Brain, Lightbulb, Activity, Puzzle, Search, Shield, ChevronDown, ChevronRight, Wrench,
-  PanelLeft, SquarePen, Pin, PinOff, Edit2, Terminal, Gift, BarChart3, Link, Pen, FolderSearch
+  PanelLeft, SquarePen, Pin, PinOff, Edit2, Terminal, Gift, BarChart3, Link, Pen, FolderSearch, Compass
 } from 'lucide-react';
 import ChatInterface from './components/ChatInterface';
 import WelcomeScreen from './components/WelcomeScreen';
@@ -23,6 +23,7 @@ import CanvasBoard from './components/CanvasBoard';
 import LocalRAG from './components/LocalRAG';
 import ProactiveNotifications from './components/ProactiveNotifications';
 import UserSwitcher from './components/UserSwitcher';
+import DiscoverPage from './components/DiscoverPage';
 import './index.css';
 
 export default function App() {
@@ -141,6 +142,7 @@ export default function App() {
       case 'chains': return <AgentChains />;
       case 'canvas': return <CanvasBoard />;
       case 'rag': return <LocalRAG />;
+      case 'discover': return <DiscoverPage onStartChat={(msg) => { if (msg) startNewChat(msg); else startNewChat(); }} />;
       default: return <WelcomeScreen onStartChat={startNewChat} />;
     }
   };
@@ -203,7 +205,15 @@ export default function App() {
             </div>
           )}
 
-          <div className={`px-2 ${sidebarOpen ? 'mt-4' : 'mt-2'}`}>
+          <div className={`px-2 ${sidebarOpen ? 'mt-4' : 'mt-2'} space-y-1`}>
+            <button
+              className={`nav-item ${activeView === 'discover' ? 'active' : ''} ${!sidebarOpen ? 'justify-center px-0' : ''}`}
+              onClick={() => setActiveView('discover')}
+              title="Entdecken"
+            >
+              <Compass size={20} />
+              {sidebarOpen && <span className="ml-3">Entdecken</span>}
+            </button>
             <button
               className={`nav-item ${activeView === 'search' ? 'active' : ''} ${!sidebarOpen ? 'justify-center px-0' : ''}`}
               onClick={() => setActiveView('search')}
