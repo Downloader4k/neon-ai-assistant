@@ -1,16 +1,25 @@
 # NEON AI Assistant
 
-> Persoenlicher KI-Assistent mit Hybrid-Routing (Claude + Ollama), 5-Layer Memory System und Netzwerk-Zugriff
+> Persoenlicher KI-Assistent mit Hybrid-Routing (Claude + Ollama), 5-Layer Memory System, Magic Features und Entdecken-Seite
 
 ![Node](https://img.shields.io/badge/Node-20+-green)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5+-blue)
+![React](https://img.shields.io/badge/React-18+-61dafb)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
-NEON ist eine Web-App, die Claude AI und lokale LLMs (Ollama/Gemma3) kombiniert. Das System routet Anfragen intelligent zwischen Cloud und lokal, merkt sich Kontext ueber ein 5-schichtiges Gedaechtnissystem und ist von jedem Geraet im Netzwerk erreichbar.
+NEON ist ein vollstaendiger KI-Assistent als Web-App, der Claude AI und lokale LLMs (Ollama/Gemma3) kombiniert. Das System routet Anfragen intelligent zwischen Cloud und lokal, merkt sich Kontext ueber ein 5-schichtiges Gedaechtnissystem und bietet einzigartige Magic Features, die ueber einen normalen Chatbot hinausgehen.
+
+---
+
+## Uebersicht
+
+![Feature-Uebersicht](docs/screenshots/feature-overview.svg)
 
 ---
 
 ## Features
+
+### Kern-Features
 
 - **Hybrid AI Router** — 5-Stufen-Orchestrator routet automatisch zwischen Claude (komplex) und Ollama (schnell/privat)
 - **5-Layer Memory** — Working, Short-Term, Long-Term, Episodic, Semantic mit Importance Scoring, Decay und Consolidation
@@ -21,27 +30,63 @@ NEON ist eine Web-App, die Claude AI und lokale LLMs (Ollama/Gemma3) kombiniert.
 - **Web-Suche** — DuckDuckGo + Wikipedia Integration
 - **Wetter** — OpenWeatherMap Integration
 - **Wissensbasis (RAG)** — Dokumente importieren und per KI durchsuchen
-- **Lokales Dateien-RAG** — Lokale Ordner indexieren und semantisch durchsuchen
 - **Emotion Tracking** — Stimmungserkennung in Gespraechen
 - **Admin Panel** — Memory-Management, Extraktion, API-Kosten-Tracking, Performance-Dashboard
 - **Code-Ausfuehrung** — JavaScript, Python, PowerShell in einer Sandbox
-- **Zeitkapseln** — Nachrichten an dein zukuenftiges Ich planen
-- **Auto-Learning** — Manuelle Recherche mit DuckDuckGo + Wikipedia, Ergebnisse werden im Gedaechtnis gespeichert
-- **Slash-Commands** — `/wetter`, `/suche`, `/code`, `/kapsel`, `/recherche`, `/memory`, `/hilfe` direkt im Chat
-- **Konversations-Export** — Chats als Markdown oder Text exportieren
-- **Dark/Light/OLED Themes** — 3 Farbschemata mit visueller Vorschau
-- **Drag & Drop** — Dateien direkt in den Chat ziehen (Bilder, PDFs, Text)
-- **Multi-User** — Mehrere Profile mit eigenen Avataren und separatem Gedaechtnis
-- **Sprach-Persoenlichkeiten** — 5 KI-Modi: Sachlich, Freundlich, Sarkastisch, Lehrer, Pirat
-- **Konversations-Verzweigung** — Ab jeder Nachricht einen alternativen Gespraechsverlauf starten
-- **Tagesrueckblick** — Automatische Zusammenfassung: Gespraeche, Recherchen, Zeitkapseln des Tages
-- **Agenten-Ketten** — Mehrstufige KI-Aufgaben: Recherche -> Zusammenfassung -> Gedaechtnis
-- **Whiteboard/Canvas** — Zeichnen, Formen, Text mit Undo/Redo und PNG-Export
-- **PWA** — Installierbar als App mit Push-Notifications und Offline-Support
+
+### Magic Features
+
+![Magic Features](docs/screenshots/magic-features.svg)
+
+Einzigartige Funktionen, die klassische Chatbots nicht bieten:
+
+| Feature | Beschreibung |
+|---------|-------------|
+| **Morgenbriefing** | Taeglich personalisierte Zusammenfassung mit Wetter, Streaks und Vorschlaegen |
+| **Interessen-Radar** | Canvas-basiertes Radar-Chart zur Visualisierung deiner Interessen in 6 Kategorien |
+| **Gedanken-Zeitstrahl** | Chronologische Timeline deiner Gespraeche, Erinnerungen und Recherchen |
+| **Geheime Notizen** | PIN-geschuetzter privater Notiz-Editor mit Verschluesselung |
+| **KI-Tagebuch** | NEON schreibt automatisch ein Journal ueber eure Gespraeche |
+| **Challenges** | 7 Challenge-Typen (Denk-Raetsel, Quiz, Code, Kreativ, Debatte, Kopfrechnen, Wort-Akrobat) mit Streaks und Badges |
+| **Zeitkapseln** | Nachrichten an dein zukuenftiges Ich planen und automatisch oeffnen |
+| **Agenten-Ketten** | Mehrstufige KI-Workflows: Recherche → Zusammenfassung → Gedaechtnis |
+| **Whiteboard** | Zeichnen, Formen, Text mit Undo/Redo und PNG-Export |
+| **Dateien-RAG** | Lokale Ordner indexieren und semantisch durchsuchen |
+| **Tagesrueckblick** | Automatische Zusammenfassung: Gespraeche, Recherchen, Zeitkapseln des Tages |
+| **Erklaer-Stufen** | Jede Antwort auf 5 Niveaus erklaeren lassen: Kind bis Experte |
+
+### Entdecken-Seite
+
+Eine interaktive Uebersichtsseite (wie bei Microsoft Copilot) mit:
+
+- **Hero-Banner** mit animierten SVG-Illustrationen
+- **Schnellstart-Buttons** fuer haeufige Aktionen
+- **Prompt-Vorschlaege** nach Kategorien (Lernen, Programmieren, Kreativ, Produktivitaet, Analyse, Recherche, Alltag)
+- **Feature-Karten** mit SVG-Illustrationen fuer alle 12 Magic Features
+
+### Weitere Features (v2)
+
+| Feature | Beschreibung |
+|---------|-------------|
+| **Slash-Commands** | `/wetter`, `/suche`, `/code`, `/kapsel`, `/recherche`, `/memory`, `/hilfe` |
+| **Konversations-Export** | Markdown + Text Export |
+| **Themes** | Dark, Light, OLED mit visueller Vorschau |
+| **Drag & Drop** | Bilder, PDFs, Textdateien in den Chat ziehen |
+| **Multi-User** | Profile mit Avataren, separates Gedaechtnis |
+| **Persoenlichkeiten** | Sachlich, Freundlich, Sarkastisch, Lehrer, Pirat |
+| **Konversations-Fork** | Ab jeder Nachricht verzweigen |
+| **PWA** | Installierbar als App mit Push-Notifications und Offline-Support |
+| **Skills & Feature Hub** | Zentraler Ort fuer alle erweiterten Funktionen mit Kategorie-Filter |
 
 ---
 
-## Quick Start
+## Architektur
+
+![Architektur](docs/screenshots/architektur.svg)
+
+---
+
+## Schnellstart
 
 ### Voraussetzungen
 
@@ -123,7 +168,16 @@ neon-ai-assistant/
 │
 ├── frontend/               # React Web-App (Vite)
 │   ├── src/
-│   │   ├── components/     # 35+ UI Komponenten
+│   │   ├── components/     # 40+ UI Komponenten
+│   │   │   ├── DiscoverPage.tsx     # Entdecken-Seite
+│   │   │   ├── SkillStore.tsx       # Skills & Feature Hub
+│   │   │   ├── MorningBriefing.tsx  # Morgenbriefing
+│   │   │   ├── PersonalityRadar.tsx # Interessen-Radar
+│   │   │   ├── ThoughtTimeline.tsx  # Gedanken-Zeitstrahl
+│   │   │   ├── SecretNotes.tsx      # Geheime Notizen
+│   │   │   ├── AIDiary.tsx          # KI-Tagebuch
+│   │   │   ├── ChallengeMode.tsx    # Challenges
+│   │   │   └── ...
 │   │   ├── store/          # Zustand State Management
 │   │   ├── services/       # STT, TTS
 │   │   └── styles/
@@ -131,6 +185,7 @@ neon-ai-assistant/
 │
 ├── shared/types/           # Geteilte TypeScript-Typen
 ├── docker/                 # Docker Compose (PostgreSQL, Redis, ChromaDB)
+├── docs/                   # Dokumentation & Screenshots
 ├── scripts/                # Wartungs-Skripte
 └── KONZEPT_V2.md           # Detailliertes Konzeptdokument
 ```
@@ -155,10 +210,10 @@ Automatische Consolidation, Importance Scoring, Memory Decay und Promotion.
 
 5-Stufen Entscheidungsprozess:
 
-1. **Domain-Klassifikation** — Emotional? -> Ollama. Komplex? -> weiter
-2. **Komplexitaetsbewertung** — Score < 70? -> Ollama
-3. **Self-Confidence** — Ollama sicher genug? -> Ollama
-4. **Depth Threshold** — Tiefe noetig? -> Claude
+1. **Domain-Klassifikation** — Emotional? → Ollama. Komplex? → weiter
+2. **Komplexitaetsbewertung** — Score < 70? → Ollama
+3. **Self-Confidence** — Ollama sicher genug? → Ollama
+4. **Depth Threshold** — Tiefe noetig? → Claude
 5. **Execution** — Antwort streamen
 
 Konfigurierbar via `.env`:
@@ -194,7 +249,7 @@ CLAUDE_THRESHOLD=0.85
 
 ---
 
-## Development
+## Entwicklung
 
 ```bash
 # Alles starten (Backend + Frontend parallel)
@@ -271,23 +326,8 @@ socket.on('ai-response-complete', ({ conversationId }))
 | 15 | Performance (Dashboard, MemoryMonitor, PerformanceMonitor) | Fertig |
 | 16 | Security (Token-Auth, Rate-Limiting, XSS, Helmet, CORS) | Fertig |
 | 17 | Magic Features (Emotion Tracking, Zeitkapseln, Predictive Assistant) | Fertig |
-
-### Neue Features (v2)
-
-| Feature | Beschreibung |
-|---------|-------------|
-| Slash-Commands | `/wetter`, `/suche`, `/code`, `/kapsel`, `/recherche`, `/memory`, `/hilfe` |
-| Konversations-Export | Markdown + Text Export |
-| Themes | Dark, Light, OLED mit visueller Vorschau |
-| Drag & Drop | Bilder, PDFs, Textdateien in den Chat ziehen |
-| Multi-User | Profile mit Avataren, separates Gedaechtnis |
-| Persoenlichkeiten | Sachlich, Freundlich, Sarkastisch, Lehrer, Pirat |
-| Konversations-Fork | Ab jeder Nachricht verzweigen |
-| Tagesrueckblick | Automatische Tages-Zusammenfassung |
-| Agenten-Ketten | Mehrstufige KI-Workflows |
-| Whiteboard | Zeichnen, Formen, Text, PNG-Export |
-| Dateien-RAG | Lokale Ordner indexieren und durchsuchen |
-| PWA | Installierbar, Push-Notifications, Offline |
+| 18 | Magic Features v2 (Morgenbriefing, Radar, Timeline, Notizen, Tagebuch, Challenges) | Fertig |
+| 19 | Entdecken-Seite & Feature Hub (SVG-Illustrationen, Prompt-Vorschlaege) | Fertig |
 
 ### Naechste Schritte
 
@@ -307,10 +347,10 @@ socket.on('ai-response-complete', ({ conversationId }))
 
 ---
 
-## License
+## Lizenz
 
 MIT
 
 ---
 
-Built with Claude AI, Ollama, and TypeScript.
+Gebaut mit Claude AI, Ollama und TypeScript.

@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 500">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#16213e"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#F5A623"/>
+      <stop offset="100%" style="stop-color:#FF6B35"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="900" height="500" fill="url(#bg)" rx="16"/>
+
+  <!-- Header -->
+  <text x="450" y="55" font-family="Segoe UI, Arial, sans-serif" font-size="32" font-weight="700" fill="url(#accent)" text-anchor="middle" filter="url(#glow)">NEON AI Assistant</text>
+  <text x="450" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#8892b0" text-anchor="middle">Persoenlicher KI-Assistent mit Hybrid-Routing, 5-Layer Memory &amp; Magic Features</text>
+
+  <!-- Sidebar mockup -->
+  <rect x="30" y="110" width="160" height="360" rx="12" fill="#0f1628" stroke="#2a2f4a" stroke-width="1"/>
+  <circle cx="55" cy="135" r="8" fill="#F5A623"/>
+  <text x="70" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="600" fill="#F5A623">NEON</text>
+  <rect x="42" y="158" width="136" height="28" rx="8" fill="rgba(245,166,35,0.15)"/>
+  <text x="60" y="177" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#F5A623">Entdecken</text>
+  <text x="60" y="205" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#6b7394">Suche</text>
+  <line x1="42" y1="220" x2="178" y2="220" stroke="#2a2f4a" stroke-width="1"/>
+  <text x="60" y="245" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#6b7394">Gedaechtnis</text>
+  <text x="60" y="268" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#6b7394">Emotionen</text>
+  <text x="60" y="291" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#6b7394">Vorhersagen</text>
+  <text x="60" y="314" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#6b7394">Code-Tools</text>
+  <text x="60" y="337" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#F5A623">Skills &amp; Features</text>
+  <text x="60" y="360" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#6b7394">Admin</text>
+
+  <!-- Main content area - Feature cards grid -->
+  <rect x="210" y="110" width="660" height="360" rx="12" fill="#0d1220" stroke="#2a2f4a" stroke-width="1"/>
+
+  <!-- Hero banner -->
+  <rect x="225" y="122" width="630" height="70" rx="10" fill="linear-gradient(135deg, #F5A623, #FF6B35)"/>
+  <rect x="225" y="122" width="630" height="70" rx="10" fill="rgba(245,166,35,0.12)"/>
+  <text x="245" y="152" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="#F5A623">Entdecke was NEON alles kann</text>
+  <text x="245" y="175" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#8892b0">Finde Inspiration, probiere neue Features und entdecke versteckte Faehigkeiten</text>
+
+  <!-- Feature cards row 1 -->
+  <rect x="225" y="205" width="150" height="85" rx="10" fill="#1a1f35" stroke="#2a2f4a" stroke-width="1"/>
+  <circle cx="250" cy="230" r="12" fill="rgba(255,152,0,0.2)"/>
+  <text x="248" y="234" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#FF9800" text-anchor="middle">&#9788;</text>
+  <text x="225" y="258" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#e0e6f0" x="240">Morgenbriefing</text>
+  <text x="240" y="275" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#6b7394">Taeglich personalisiert</text>
+
+  <rect x="385" y="205" width="150" height="85" rx="10" fill="#1a1f35" stroke="#2a2f4a" stroke-width="1"/>
+  <circle cx="410" cy="230" r="12" fill="rgba(33,150,243,0.2)"/>
+  <text x="408" y="234" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#2196F3" text-anchor="middle">&#9670;</text>
+  <text x="400" y="258" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#e0e6f0">Interessen-Radar</text>
+  <text x="400" y="275" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#6b7394">Radar-Chart Analyse</text>
+
+  <rect x="545" y="205" width="150" height="85" rx="10" fill="#1a1f35" stroke="#2a2f4a" stroke-width="1"/>
+  <circle cx="570" cy="230" r="12" fill="rgba(156,39,176,0.2)"/>
+  <text x="568" y="234" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#9C27B0" text-anchor="middle">&#8986;</text>
+  <text x="560" y="258" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#e0e6f0">Gedanken-Zeitstrahl</text>
+  <text x="560" y="275" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#6b7394">Chronologische Timeline</text>
+
+  <rect x="705" y="205" width="150" height="85" rx="10" fill="#1a1f35" stroke="#2a2f4a" stroke-width="1"/>
+  <circle cx="730" cy="230" r="12" fill="rgba(244,67,54,0.2)"/>
+  <text x="728" y="234" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#F44336" text-anchor="middle">&#128274;</text>
+  <text x="720" y="258" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#e0e6f0">Geheime Notizen</text>
+  <text x="720" y="275" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#6b7394">PIN-geschuetzt</text>
+
+  <!-- Feature cards row 2 -->
+  <rect x="225" y="300" width="150" height="85" rx="10" fill="#1a1f35" stroke="#2a2f4a" stroke-width="1"/>
+  <circle cx="250" cy="325" r="12" fill="rgba(76,175,80,0.2)"/>
+  <text x="248" y="329" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#4CAF50" text-anchor="middle">&#128214;</text>
+  <text x="240" y="353" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#e0e6f0">KI-Tagebuch</text>
+  <text x="240" y="370" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#6b7394">Auto-Journal</text>
+
+  <rect x="385" y="300" width="150" height="85" rx="10" fill="#1a1f35" stroke="#2a2f4a" stroke-width="1"/>
+  <circle cx="410" cy="325" r="12" fill="rgba(255,87,34,0.2)"/>
+  <text x="408" y="329" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#FF5722" text-anchor="middle">&#127942;</text>
+  <text x="400" y="353" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#e0e6f0">Challenges</text>
+  <text x="400" y="370" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#6b7394">Streaks &amp; Badges</text>
+
+  <rect x="545" y="300" width="150" height="85" rx="10" fill="#1a1f35" stroke="#2a2f4a" stroke-width="1"/>
+  <circle cx="570" cy="325" r="12" fill="rgba(0,188,212,0.2)"/>
+  <text x="568" y="329" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#00BCD4" text-anchor="middle">&#9998;</text>
+  <text x="560" y="353" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#e0e6f0">Whiteboard</text>
+  <text x="560" y="370" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#6b7394">Zeichnen &amp; Export</text>
+
+  <rect x="705" y="300" width="150" height="85" rx="10" fill="#1a1f35" stroke="#2a2f4a" stroke-width="1"/>
+  <circle cx="730" cy="325" r="12" fill="rgba(121,85,72,0.2)"/>
+  <text x="728" y="329" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#795548" text-anchor="middle">&#128269;</text>
+  <text x="720" y="353" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#e0e6f0">Dateien-RAG</text>
+  <text x="720" y="370" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#6b7394">Semantische Suche</text>
+
+  <!-- Feature cards row 3 -->
+  <rect x="225" y="395" width="200" height="60" rx="10" fill="#1a1f35" stroke="#F5A623" stroke-width="1" opacity="0.7"/>
+  <text x="255" y="425" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#F5A623">+ Zeitkapseln, Agenten-Ketten,</text>
+  <text x="255" y="442" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#F5A623">  Tagesrueckblick &amp; mehr</text>
+</svg>

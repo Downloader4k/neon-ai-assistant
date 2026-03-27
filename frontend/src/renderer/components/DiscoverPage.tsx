@@ -3,7 +3,7 @@ import { useAppStore, ViewMode } from '../store/useAppStore';
 import {
   Compass, Sparkles, TrendingUp, Zap, BookOpen, Code, Globe, Brain,
   Palette, MessageSquare, CloudSun, Search, Gift, BarChart3, Pen,
-  FolderSearch, Link, ArrowRight, Clock, Star, Flame
+  FolderSearch, Link, ArrowRight, Clock, Star, Flame, Coffee, Lock, Trophy
 } from 'lucide-react';
 
 // --- Inline SVG Illustrations ---
@@ -249,12 +249,18 @@ const promptCards: PromptCard[] = [
 ];
 
 const featureCards: FeatureCardData[] = [
+  { id: 'briefing', title: 'Morgenbriefing', description: 'Dein taeglicher Start mit Wetter, Streaks und Vorschlaegen', icon: Coffee, color: '#FF9800', illustrationType: 'capsules' },
+  { id: 'challenges', title: 'Challenges', description: 'Taegliche Denk-Raetsel mit Streaks und Badges', icon: Trophy, color: '#FF5722', illustrationType: 'chains' },
   { id: 'canvas', title: 'Whiteboard', description: 'Zeichne, skizziere und brainstorme visuell', icon: Pen, color: '#E91E63', illustrationType: 'whiteboard' },
-  { id: 'chains', title: 'Agenten-Ketten', description: 'Automatisierte mehrstufige KI-Workflows', icon: Link, color: '#9C27B0', illustrationType: 'chains' },
-  { id: 'rag', title: 'Dateien-RAG', description: 'Durchsuche deine lokalen Dateien per KI', icon: FolderSearch, color: '#4CAF50', illustrationType: 'rag' },
-  { id: 'capsules', title: 'Zeitkapseln', description: 'Sende Nachrichten an dein zukuenftiges Ich', icon: Gift, color: '#FF9800', illustrationType: 'capsules' },
-  { id: 'memory', title: 'Gedaechtnis', description: 'NEON merkt sich was dir wichtig ist', icon: Brain, color: '#2196F3', illustrationType: 'memory' },
-  { id: 'code', title: 'Code-Tools', description: 'Fuehre JavaScript, Python oder PowerShell aus', icon: Code, color: '#00BCD4', illustrationType: 'code' },
+  { id: 'notes', title: 'Geheime Notizen', description: 'PIN-geschuetzter privater Notiz-Editor', icon: Lock, color: '#F44336', illustrationType: 'code' },
+  { id: 'timeline', title: 'Gedanken-Zeitstrahl', description: 'Chronologische Timeline deiner Reise', icon: Clock, color: '#9C27B0', illustrationType: 'chains' },
+  { id: 'diary', title: 'KI-Tagebuch', description: 'NEON schreibt automatisch ein Journal', icon: BookOpen, color: '#4CAF50', illustrationType: 'memory' },
+  { id: 'radar', title: 'Interessen-Radar', description: 'Dein Persoenlichkeits-Profil als Radar-Chart', icon: TrendingUp, color: '#2196F3', illustrationType: 'rag' },
+  { id: 'chains', title: 'Agenten-Ketten', description: 'Automatisierte mehrstufige KI-Workflows', icon: Link, color: '#3F51B5', illustrationType: 'chains' },
+  { id: 'rag', title: 'Dateien-RAG', description: 'Durchsuche deine lokalen Dateien per KI', icon: FolderSearch, color: '#795548', illustrationType: 'rag' },
+  { id: 'capsules', title: 'Zeitkapseln', description: 'Sende Nachrichten an dein zukuenftiges Ich', icon: Gift, color: '#E91E63', illustrationType: 'capsules' },
+  { id: 'memory', title: 'Gedaechtnis', description: 'NEON merkt sich was dir wichtig ist', icon: Brain, color: '#00BCD4', illustrationType: 'memory' },
+  { id: 'code', title: 'Code-Tools', description: 'Fuehre JavaScript, Python oder PowerShell aus', icon: Code, color: '#607D8B', illustrationType: 'code' },
 ];
 
 const categories = ['Alle', 'Lernen', 'Programmieren', 'Kreativ', 'Produktivitaet', 'Analyse', 'Recherche', 'Alltag'];
@@ -307,9 +313,9 @@ export default function DiscoverPage({ onStartChat }: { onStartChat: (msg: strin
         <div style={styles.quickGrid}>
           {[
             { label: 'Neuer Chat', action: () => onStartChat(''), icon: MessageSquare, gradient: 'linear-gradient(135deg, #F5A62320, #FF6B3520)' },
+            { label: 'Morgenbriefing', action: () => setActiveView('briefing'), icon: Coffee, gradient: 'linear-gradient(135deg, #FF980020, #FF6B3520)' },
+            { label: 'Challenge starten', action: () => setActiveView('challenges'), icon: Trophy, gradient: 'linear-gradient(135deg, #FF572220, #F4433620)' },
             { label: 'Whiteboard', action: () => setActiveView('canvas'), icon: Pen, gradient: 'linear-gradient(135deg, #E91E6320, #FF5F5720)' },
-            { label: 'Dateien durchsuchen', action: () => setActiveView('rag'), icon: FolderSearch, gradient: 'linear-gradient(135deg, #4CAF5020, #00BCD420)' },
-            { label: 'Tagesrueckblick', action: () => setActiveView('summary'), icon: BarChart3, gradient: 'linear-gradient(135deg, #9C27B020, #3F51B520)' },
           ].map((item) => (
             <button key={item.label} style={{ ...styles.quickBtn, background: item.gradient }} onClick={item.action}
               onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(245,166,35,0.15)'; }}

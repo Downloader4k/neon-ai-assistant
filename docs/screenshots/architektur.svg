@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 400">
+  <defs>
+    <linearGradient id="bg3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#16213e"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="400" fill="url(#bg3)" rx="16"/>
+
+  <text x="450" y="38" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" fill="#F5A623" text-anchor="middle">Architektur</text>
+
+  <!-- Frontend Box -->
+  <rect x="30" y="60" width="250" height="310" rx="12" fill="#1a1f35" stroke="#F5A623" stroke-width="2"/>
+  <text x="155" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#F5A623" text-anchor="middle">Frontend (React)</text>
+  <rect x="45" y="100" width="220" height="24" rx="6" fill="#0d1220"/>
+  <text x="155" y="117" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#8892b0" text-anchor="middle">Entdecken-Seite mit SVG-Illustrationen</text>
+  <rect x="45" y="130" width="220" height="24" rx="6" fill="#0d1220"/>
+  <text x="155" y="147" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#8892b0" text-anchor="middle">Skills &amp; Feature Hub</text>
+  <rect x="45" y="160" width="220" height="24" rx="6" fill="#0d1220"/>
+  <text x="155" y="177" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#8892b0" text-anchor="middle">Magic Features (6 neue Views)</text>
+  <rect x="45" y="190" width="220" height="24" rx="6" fill="#0d1220"/>
+  <text x="155" y="207" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#8892b0" text-anchor="middle">Echtzeit-Chat mit Streaming</text>
+  <rect x="45" y="220" width="220" height="24" rx="6" fill="#0d1220"/>
+  <text x="155" y="237" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#8892b0" text-anchor="middle">Slash-Commands &amp; Drag&amp;Drop</text>
+  <rect x="45" y="250" width="220" height="24" rx="6" fill="#0d1220"/>
+  <text x="155" y="267" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#8892b0" text-anchor="middle">Dark/Light/OLED Themes</text>
+  <rect x="45" y="280" width="105" height="24" rx="6" fill="#0d1220"/>
+  <text x="97" y="297" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#8892b0" text-anchor="middle">Whiteboard</text>
+  <rect x="160" y="280" width="105" height="24" rx="6" fill="#0d1220"/>
+  <text x="212" y="297" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#8892b0" text-anchor="middle">PWA</text>
+  <rect x="45" y="310" width="220" height="24" rx="6" fill="#0d1220"/>
+  <text x="155" y="327" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#8892b0" text-anchor="middle">Multi-User &amp; Persoenlichkeiten</text>
+
+  <!-- Arrows -->
+  <line x1="285" y1="200" x2="325" y2="200" stroke="#F5A623" stroke-width="2" marker-end="url(#arrow)"/>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#F5A623"/></marker></defs>
+
+  <!-- Backend Box -->
+  <rect x="330" y="60" width="250" height="310" rx="12" fill="#1a1f35" stroke="#2196F3" stroke-width="2"/>
+  <text x="455" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#2196F3" text-anchor="middle">Backend (Express)</text>
+  <rect x="345" y="100" width="220" height="24" rx="6" fill="#0d1220"/>
+  <text x="455" y="117" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#8892b0" text-anchor="middle">5-Stufen AI Router</text>
+  <rect x="345" y="130" width="220" height="24" rx="6" fill="#0d1220"/>
+  <text x="455" y="147" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#8892b0" text-anchor="middle">5-Layer Memory System</text>
+  <rect x="345" y="160" width="220" height="24" rx="6" fill="#0d1220"/>
+  <text x="455" y="177" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#8892b0" text-anchor="middle">WebSocket Streaming</text>
+  <rect x="345" y="190" width="220" height="24" rx="6" fill="#0d1220"/>
+  <text x="455" y="207" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#8892b0" text-anchor="middle">REST API (35+ Endpoints)</text>
+  <rect x="345" y="220" width="220" height="24" rx="6" fill="#0d1220"/>
+  <text x="455" y="237" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#8892b0" text-anchor="middle">Code-Sandbox (JS/Python/PS)</text>
+  <rect x="345" y="250" width="220" height="24" rx="6" fill="#0d1220"/>
+  <text x="455" y="267" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#8892b0" text-anchor="middle">Skill-System &amp; Plugins</text>
+  <rect x="345" y="280" width="220" height="24" rx="6" fill="#0d1220"/>
+  <text x="455" y="297" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#8892b0" text-anchor="middle">Web-Suche &amp; Auto-Learning</text>
+  <rect x="345" y="310" width="220" height="24" rx="6" fill="#0d1220"/>
+  <text x="455" y="327" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#8892b0" text-anchor="middle">Security (Auth, Rate-Limit, CORS)</text>
+
+  <!-- Arrows to KI -->
+  <line x1="585" y1="200" x2="625" y2="200" stroke="#2196F3" stroke-width="2" marker-end="url(#arrow2)"/>
+  <defs><marker id="arrow2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="#2196F3"/></marker></defs>
+
+  <!-- KI & Daten Box -->
+  <rect x="630" y="60" width="240" height="150" rx="12" fill="#1a1f35" stroke="#4CAF50" stroke-width="2"/>
+  <text x="750" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#4CAF50" text-anchor="middle">KI &amp; ML</text>
+  <rect x="645" y="100" width="210" height="24" rx="6" fill="#0d1220"/>
+  <text x="750" y="117" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#8892b0" text-anchor="middle">Claude (Anthropic API)</text>
+  <rect x="645" y="130" width="210" height="24" rx="6" fill="#0d1220"/>
+  <text x="750" y="147" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#8892b0" text-anchor="middle">Ollama / Gemma3 (lokal)</text>
+  <rect x="645" y="160" width="210" height="24" rx="6" fill="#0d1220"/>
+  <text x="750" y="177" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#8892b0" text-anchor="middle">Transformers.js (Embeddings)</text>
+
+  <!-- Datenbank Box -->
+  <rect x="630" y="230" width="240" height="140" rx="12" fill="#1a1f35" stroke="#FF9800" stroke-width="2"/>
+  <text x="750" y="258" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#FF9800" text-anchor="middle">Datenbank</text>
+  <rect x="645" y="270" width="210" height="24" rx="6" fill="#0d1220"/>
+  <text x="750" y="287" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#8892b0" text-anchor="middle">SQLite / PostgreSQL (Prisma)</text>
+  <rect x="645" y="300" width="210" height="24" rx="6" fill="#0d1220"/>
+  <text x="750" y="317" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#8892b0" text-anchor="middle">ChromaDB (Vektoren)</text>
+  <rect x="645" y="330" width="210" height="24" rx="6" fill="#0d1220"/>
+  <text x="750" y="347" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#8892b0" text-anchor="middle">Redis (Optional, Caching)</text>
+</svg>
