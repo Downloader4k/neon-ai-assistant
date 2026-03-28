@@ -291,9 +291,18 @@ WICHTIGE ANWEISUNGEN:
             }
 
             // LOCAL RAG: Query indexed files from database
+            // Uses current message + recent conversation history for better keyword matching on follow-ups
             try {
                 if (textMessage.length > 3) {
-                    const keywords = textMessage.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2);
+                    const allText = [
+                        textMessage,
+                        ...conversationHistory.slice(-4).map(h => h.content)
+                    ].join(' ');
+                    const stopWords = new Set(['der', 'die', 'das', 'und', 'oder', 'ein', 'eine', 'ist', 'sind', 'hat', 'haben', 'mit', 'von', 'den', 'dem', 'des', 'auf', 'fuer', 'nicht', 'sich', 'ich', 'bitte', 'auch', 'noch', 'wie', 'was', 'wer', 'welche', 'welcher', 'welches', 'deine', 'meine', 'dein', 'mein', 'hast', 'weisst', 'kannst', 'moechte', 'antworte', 'ausfuehrlich', 'the', 'and', 'for', 'you', 'that', 'this', 'with']);
+                    const keywords = [...new Set(
+                        allText.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2 && !stopWords.has(w))
+                    )];
+
                     const ragEntries = await prisma.memoryEntry.findMany({
                         where: {
                             content: { startsWith: '[RAG:' },
@@ -303,14 +312,13 @@ WICHTIGE ANWEISUNGEN:
                     });
 
                     if (ragEntries.length > 0) {
-                        // Score entries by keyword relevance
                         const scored = ragEntries
                             .map((entry: any) => {
                                 const lower = entry.content.toLowerCase();
                                 const hits = keywords.filter((kw: string) => lower.includes(kw)).length;
                                 return { entry, score: hits / keywords.length };
                             })
-                            .filter((s: any) => s.score > 0.2)
+                            .filter((s: any) => s.score > 0.15)
                             .sort((a: any, b: any) => b.score - a.score)
                             .slice(0, 5);
 
@@ -523,9 +531,19 @@ ${contextBlock}
             }
 
             // LOCAL RAG: Query indexed files from database
+            // Uses current message + recent conversation history for better keyword matching on follow-ups
             try {
                 if (textMessage.length > 3) {
-                    const keywords = textMessage.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2);
+                    // Build keywords from current message AND recent history for follow-up context
+                    const allText = [
+                        textMessage,
+                        ...conversationHistory.slice(-4).map(h => h.content)
+                    ].join(' ');
+                    const stopWords = new Set(['der', 'die', 'das', 'und', 'oder', 'ein', 'eine', 'ist', 'sind', 'hat', 'haben', 'mit', 'von', 'den', 'dem', 'des', 'auf', 'fuer', 'nicht', 'sich', 'ich', 'bitte', 'auch', 'noch', 'wie', 'was', 'wer', 'welche', 'welcher', 'welches', 'deine', 'meine', 'dein', 'mein', 'hast', 'weisst', 'kannst', 'moechte', 'antworte', 'ausfuehrlich', 'the', 'and', 'for', 'you', 'that', 'this', 'with']);
+                    const keywords = [...new Set(
+                        allText.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2 && !stopWords.has(w))
+                    )];
+
                     const ragEntries = await prisma.memoryEntry.findMany({
                         where: {
                             content: { startsWith: '[RAG:' },
@@ -541,12 +559,12 @@ ${contextBlock}
                                 const hits = keywords.filter((kw: string) => lower.includes(kw)).length;
                                 return { entry, score: hits / keywords.length };
                             })
-                            .filter((s: any) => s.score > 0.2)
+                            .filter((s: any) => s.score > 0.15)
                             .sort((a: any, b: any) => b.score - a.score)
                             .slice(0, 5);
 
                         if (scored.length > 0) {
-                            logger.info(`📂 Local RAG: ${scored.length} relevant entries found`);
+                            logger.info(`📂 Local RAG: ${scored.length} relevant entries found (keywords from message + history)`);
                             const localRagBlock = scored
                                 .map((s: any) => {
                                     const match = s.entry.content.match(/^\[RAG: (.+?)\]\s*/);
