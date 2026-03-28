@@ -16,7 +16,7 @@ export default function WeatherSettingsModal({ onClose }: WeatherSettingsModalPr
             .then(res => res.json())
             .then(data => {
                 if (data.location) setLocation(data.location);
-                else setLocation('Wiefelstede'); // Default fallback
+                else setLocation('Berlin'); // Default fallback
             })
             .catch(err => console.error(err));
     }, []);

@@ -21,7 +21,7 @@ export class ResponseGuardrails {
 
     // WHITELIST: Projects that ACTUALLY exist
     private readonly ALLOWED_PROJECTS = [
-        'MegaKino',
+        'UserProject',
         'Neon',
         'Neon-AI-Assistant',
         'neon-ai-assistant'
@@ -33,7 +33,7 @@ export class ResponseGuardrails {
         /Aurora-?Projekt/i,
         /Titan-?Projekt/i,
         // Generic "our project" without valid name
-        /unser(?:e[ms]?)?\s+(?:gemeinsam(?:e[ms]?)?\s+)?Projekt(?!\s*(?:MegaKino|Neon))/i,
+        /unser(?:e[ms]?)?\s+(?:gemeinsam(?:e[ms]?)?\s+)?Projekt(?!\s*(?:UserProject|Neon))/i,
         // Fake memories
         /letztes?\s+Mal\s+(?:haben\s+wir|hast\s+du|war)/i,
         /neulich\s+(?:haben\s+wir|hast\s+du)/i,
@@ -141,7 +141,7 @@ export class ResponseGuardrails {
     private extractProjectMentions(response: string): string[] {
         const projects = new Set<string>();
 
-        // Pattern 1: "MegaKino", "Phoenix-Projekt", etc.
+        // Pattern 1: "UserProject", "Phoenix-Projekt", etc.
         const capitalizedPattern = /\b([A-Z][a-zäöüß]*(?:-?[A-Z][a-zäöüß]*)*)\b/g;
 
         let match;

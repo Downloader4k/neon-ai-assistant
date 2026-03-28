@@ -87,7 +87,8 @@ export default function MorningBriefing({ onStartChat }: { onStartChat: (msg: st
 
   const fetchWeather = async () => {
     try {
-      const res = await fetch('/api/magic/weather?city=Wiefelstede');
+      const savedCity = localStorage.getItem('neon-weather-city') || 'Berlin';
+      const res = await fetch(`/api/magic/weather?city=${encodeURIComponent(savedCity)}`);
       if (res.ok) {
         const w = await res.json();
         setWeather({ temp: Math.round(w.main?.temp || w.temp || 0), desc: w.weather?.[0]?.description || '' });
@@ -113,7 +114,7 @@ export default function MorningBriefing({ onStartChat }: { onStartChat: (msg: st
         <div style={styles.heroGlow} />
         <TimeIcon size={48} color="var(--accent-primary)" style={{ position: 'relative', zIndex: 2 }} />
         <div style={{ position: 'relative', zIndex: 2 }}>
-          <h1 style={styles.heroTitle}>{greeting}, Thorben!</h1>
+          <h1 style={styles.heroTitle}>{greeting}!</h1>
           <p style={styles.heroSub}>Hier ist dein taegliches Briefing</p>
         </div>
         {weather && (

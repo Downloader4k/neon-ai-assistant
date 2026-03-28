@@ -11,7 +11,7 @@
 
 ```powershell
 # 1. In Projektverzeichnis wechseln
-cd C:\Users\Thorben\.gemini\antigravity\scratch\neon-ai-assistant
+cd neon-ai-assistant
 
 # 2. Dependencies installieren
 npm install

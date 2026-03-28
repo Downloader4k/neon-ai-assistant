@@ -65,8 +65,9 @@ frontend_backup_*/
 # Memory cache (runtime data)
 memory/
 
-# Uploads (user data)
+# Uploads & vector data (user data)
 backend/data/uploads/
+backend/data/vectors.json
 
 # Debug files
 debug_*.txt

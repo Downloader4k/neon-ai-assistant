@@ -99,7 +99,7 @@ async function runTest() {
         },
         {
             type: 'KNOWLEDGE',
-            content: 'Joel Brandenstein ist ein deutscher Popsänger aus Ratingen.',
+            content: 'TypeScript ist eine typisierte Obermenge von JavaScript.',
             importance: 0.7, // High importance for knowledge
             tags: ['music', 'person'],
             confidence: 0.9
@@ -181,7 +181,7 @@ async function runTest() {
 
     // 4. Knowledge Check
     const knowledgeMem = createdMemories.find(m => m.type === 'KNOWLEDGE');
-    if (knowledgeMem && knowledgeMem.content.includes('Joel Brandenstein')) {
+    if (knowledgeMem && knowledgeMem.content.includes('TypeScript')) {
         console.log('✅ PASS: KNOWLEDGE memory preserved (General Fact).');
     } else {
         console.error('❌ FAIL: KNOWLEDGE memory missing.');

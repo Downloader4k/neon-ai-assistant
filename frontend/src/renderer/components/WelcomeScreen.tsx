@@ -114,7 +114,7 @@ export default function WelcomeScreen({ onStartChat }: { onStartChat: (msg?: str
           <div className="welcome-header-modern">
             <div className="greeting-row">
               <Sparkles size={32} className="greeting-icon" />
-              <span className="greeting-text">Hallo Thorben</span>
+              <span className="greeting-text">Hallo!</span>
             </div>
             <h2 className="main-question fade-in">{greetingSubtext}</h2>
           </div>

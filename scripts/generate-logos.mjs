@@ -13,7 +13,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 
 // Sharp aus openclaw node_modules laden
-const sharp = require('C:/Users/Thorben/AppData/Roaming/npm/node_modules/openclaw/node_modules/sharp');
+const sharp = require('sharp');
 
 const PUBLIC_DIR = join(__dirname, '../frontend/public');
 const SVG_PATH = join(PUBLIC_DIR, 'logo.svg');

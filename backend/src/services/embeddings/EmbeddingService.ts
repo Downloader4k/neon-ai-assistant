@@ -108,12 +108,12 @@ export class EmbeddingService {
         let processed = text.replace(/\s+/g, ' ');
         
         // Normalisiere Datumsformate (für bessere Vergleichbarkeit)
-        // 25.03.1991, 25.3.1991, 25/03/1991 -> standardisiert
+        // DD.MM.YYYY, D.M.YYYY, DD/MM/YYYY -> standardisiert
         processed = processed.replace(/(\d{1,2})[\/\.](\d{1,2})[\/\.](\d{4})/g, (_match, day, month, year) => {
             return `${day.padStart(2, '0')}.${month.padStart(2, '0')}.${year}`;
         });
         
-        // Normalisiere "25. März 1991" -> "25.03.1991"
+        // Normalisiere "1. Januar 2000" -> "01.01.2000"
         const monthMap: {[key: string]: string} = {
             'januar': '01', 'februar': '02', 'märz': '03', 'april': '04', 
             'mai': '05', 'juni': '06', 'juli': '07', 'august': '08',

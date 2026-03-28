@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
  * KEEPS:
  * - All entries tagged with "interview:*"
  * - Personal facts (name, age, location, work, family, pets)
- * - Projects (Neon, MegaKino, etc.)
+ * - Projects (Neon, etc.)
  * - Preferences (music, films, atmosphere)
  * - Goals
  * 
@@ -42,34 +42,13 @@ async function cleanupMemories() {
             continue;
         }
 
-        // Check content for personal keywords
+        // Check content for personal keywords (user-specific, configure as needed)
         const content = mem.content.toLowerCase();
         const isPersonal =
-            content.includes('thorben') ||
-            content.includes('timon') ||
-            content.includes('edda') ||
-            content.includes('jana') ||
-            content.includes('martin') ||
-            content.includes('ella') ||
-            content.includes('till') ||
-            content.includes('finn') ||
-            content.includes('fiete') ||
-            content.includes('leo') ||
-            content.includes('anni') ||
-            content.includes('wiefelstede') ||
-            content.includes('ammerland') ||
+            content.includes('interview') ||
             content.includes('neon') ||
-            content.includes('megakino') ||
-            content.includes('raspberry pi') ||
-            content.includes('3d-druck') ||
-            content.includes('gartendeko') ||
-            content.includes('hochbeete') ||
-            content.includes('kapselmaschinen') ||
-            content.includes('joel brandenstein') ||
-            content.includes('house-musik') ||
-            content.includes('fachkraft für lagerlogistik') ||
-            content.includes('schichtdienst') ||
-            content.includes('vibe coding');
+            content.includes('persoenlich') ||
+            content.includes('privat');
 
         // Check for general knowledge keywords (DELETE these)
         const isGeneralKnowledge =
@@ -94,7 +73,7 @@ async function cleanupMemories() {
             content.includes('dunkelreaktion') ||
             content.includes('chloroplast') ||
             content.includes('hallo welt') ||
-            (content.includes('ki') && !content.includes('thorben') && !content.includes('neon')) ||
+            (content.includes('ki') && !content.includes('neon')) ||
             content.includes('black box') ||
             content.includes('feedforward');
 

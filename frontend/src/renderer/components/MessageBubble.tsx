@@ -130,7 +130,7 @@ function MessageBubble({ message }: MessageBubbleProps) {
                         </div>
 
                         <span className={`text-xs font-bold whitespace-nowrap ${isUser ? 'text-accent-primary' : 'text-accent-secondary'}`}>
-                            {isUser ? 'Thorben' : 'Neon'}
+                            {isUser ? 'Du' : 'Neon'}
                         </span>
                     </div>
 

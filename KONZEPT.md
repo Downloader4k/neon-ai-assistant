@@ -1,6 +1,6 @@
 # NEON AI Assistant - Vollständiges Konzept & Verbesserungsplan
 
-> **Version:** 2.0 | **Stand:** 2026-03-21 | **Autor:** Thorben / Claude
+> **Version:** 2.0 | **Stand:** 2026-03-21 | **Autor:** Downloader4k / Claude
 > **Status:** Phase 1–17 implementiert, Optimierung & Weiterentwicklung geplant
 
 ---
@@ -506,7 +506,7 @@ Fallback: Freundliche Fehlermeldung mit Retry-Option
 **Verbesserung:**
 - Versioniertes Memory: Alte Versionen behalten, aber als "outdated" markieren
 - Changelog für wichtige Faktenänderungen
-- "Seit wann"-Information (z.B. "Thorben arbeitet seit März 2026 bei Firma X")
+- "Seit wann"-Information (z.B. "Der Nutzer arbeitet seit Maerz 2026 bei Firma X")
 
 #### 6.3.3 Intelligenterer Importance Score
 **Problem:** Score basiert hauptsächlich auf Keywords und Textmerkmalen.

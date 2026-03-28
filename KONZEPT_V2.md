@@ -1,37 +1,37 @@
 # NEON AI Assistant — Konzept V2
 
-> Vollständiges Konzeptdokument mit Architektur, Hardware-Profil, Audit-Ergebnissen, Fixplan und Roadmap.
-> Stand: 2026-03-21
+> Vollstaendiges Konzeptdokument mit Architektur, Hardware-Profil, Feature-Uebersicht und Roadmap.
+> Stand: 2026-03-27
 
 ---
 
 ## 1. Vision & Ziel
 
-NEON ist ein **persönlicher KI-Assistent**, der lokal läuft und über den **Browser im gesamten Netzwerk** erreichbar ist. Er kombiniert Cloud-KI (Claude) mit lokalen LLMs (Ollama) durch intelligentes Hybrid-Routing und verfügt über ein 5-schichtiges Gedächtnissystem, das menschliches Erinnern nachahmt.
+NEON ist ein **persoenlicher KI-Assistent**, der lokal laeuft und ueber den **Browser im gesamten Netzwerk** erreichbar ist. Er kombiniert Cloud-KI (Claude) mit lokalen LLMs (Ollama) durch intelligentes Hybrid-Routing und verfuegt ueber ein 5-schichtiges Gedaechtnissystem, das menschliches Erinnern nachahmt.
 
 ### Kernphilosophie
 
 | Prinzip | Beschreibung |
 |---------|-------------|
-| **Privacy First** | Persönliche/emotionale Gespräche bleiben lokal (Ollama) |
+| **Privacy First** | Persoenliche/emotionale Gespraeche bleiben lokal (Ollama) |
 | **Smart Routing** | Komplexe Aufgaben gehen an Claude, einfache bleiben lokal |
-| **Lernfähig** | Der Assistent lernt Präferenzen und Gewohnheiten des Nutzers |
-| **Netzwerk-App** | Reine Web-App, erreichbar von jedem Gerät im LAN (PC, Handy, Tablet) |
-| **Kein Electron** | Läuft direkt im Browser — kein Desktop-Wrapper, kein Overhead |
-| **Erweiterbar** | Plugin-System für neue Fähigkeiten |
+| **Lernfaehig** | Der Assistent lernt Praeferenzen und Gewohnheiten des Nutzers |
+| **Netzwerk-App** | Reine Web-App, erreichbar von jedem Geraet im LAN (PC, Handy, Tablet) |
+| **Kein Electron** | Laeuft direkt im Browser — kein Desktop-Wrapper, kein Overhead |
+| **Erweiterbar** | Plugin/Skill-System fuer neue Faehigkeiten |
 
 ---
 
 ## 2. Hardware-Profil (Zielsystem)
 
-| Komponente | Spezifikation | Relevanz für NEON |
+| Komponente | Spezifikation | Relevanz fuer NEON |
 |-----------|---------------|-------------------|
 | **CPU** | AMD Ryzen 7 5700G (8C/16T, 3.8 GHz) | Backend-Server, Embedding-Berechnung, Node.js |
 | **GPU** | NVIDIA RTX 3060 (12 GB VRAM) | Ollama-Modelle per CUDA, schnelle Inferenz |
-| **iGPU** | AMD Radeon Vega (integriert) | Display-Ausgabe, entlastet RTX für KI |
+| **iGPU** | AMD Radeon Vega (integriert) | Display-Ausgabe, entlastet RTX fuer KI |
 | **RAM** | 64 GB DDR4 | Alle Services gleichzeitig ohne Engpass |
 | **Storage** | Samsung 970 EVO Plus 1TB (NVMe) | Datenbank, Vektoren, schnelle I/O |
-| **OS** | Windows 11 Pro | Docker Desktop, WSL2-Unterstützung |
+| **OS** | Windows 11 Pro | Docker Desktop, WSL2-Unterstuetzung |
 
 ### Hardware-Optimierungen
 
@@ -43,7 +43,7 @@ Ollama-Konfiguration (empfohlen):
 ├── Parallel Requests: 2 (64 GB RAM erlaubt das)
 └── Alternative Code-Modell: deepseek-coder-v2:16b (~11 GB VRAM)
 
-Speicher-Aufteilung (geschätzt):
+Speicher-Aufteilung (geschaetzt):
 ├── Ollama + Modell:            ~10 GB VRAM + ~4 GB RAM
 ├── PostgreSQL:                 ~1-2 GB RAM
 ├── Redis:                      ~512 MB RAM
@@ -51,48 +51,24 @@ Speicher-Aufteilung (geschätzt):
 ├── Node.js Backend:            ~500 MB RAM
 ├── Embeddings (Transformers.js): ~500 MB RAM
 ├── Browser (Frontend):         ~300 MB RAM
-└── Gesamt:                     ~9-10 GB RAM (von 64 GB verfügbar)
+└── Gesamt:                     ~9-10 GB RAM (von 64 GB verfuegbar)
 
-→ Fazit: Massive Reserven. Der komplette Stack läuft problemlos parallel.
+→ Fazit: Massive Reserven. Der komplette Stack laeuft problemlos parallel.
 ```
 
 ---
 
 ## 3. Architektur
 
-### 3.1 Kein Electron — Reine Web-App im Netzwerk
+### 3.1 Reine Web-App im Netzwerk (Kein Electron)
 
-**Vorher (V1) — Electron Desktop-App:**
-```
-[Electron App] → [IPC Bridge] → [Express Backend] → [AI Services]
-     └── Chromium-Subprocess, Preload Scripts, Main Process
-     └── Nur auf dem lokalen PC nutzbar
-     └── ~150-200 MB extra RAM-Verbrauch
-```
-
-**Nachher (V2) — Netzwerk Web-App:**
 ```
 [Beliebiger Browser] → [HTTP/WebSocket] → [Express Backend] → [AI Services]
      └── Chrome, Firefox, Safari, Handy-Browser
-     └── Erreichbar von jedem Gerät im Netzwerk
+     └── Erreichbar von jedem Geraet im Netzwerk
      └── Kein Electron-Overhead
+     └── PWA-Installation moeglich (App-Feeling)
 ```
-
-**Was entfernt wird:**
-
-| Datei | Grund |
-|-------|-------|
-| `frontend/src/main/index.ts` | Electron Main Process — nicht mehr nötig |
-| `frontend/src/preload/index.ts` | Electron Preload/IPC Bridge — nicht mehr nötig |
-| Alle `window.electron` Referenzen | Electron-spezifische API |
-
-**Was sich dadurch verbessert:**
-- ~150-200 MB weniger RAM (kein Chromium-Subprocess)
-- Zugriff von **jedem Gerät im Netzwerk** (Handy, Tablet, Laptop, etc.)
-- Kein Electron-Update-Management nötig
-- Einfacheres Build & Deployment
-- Chrome DevTools direkt nutzbar
-- PWA-Installation möglich (App-Feeling ohne Electron)
 
 ### 3.2 Netzwerk-Konfiguration
 
@@ -117,24 +93,19 @@ Speicher-Aufteilung (geschätzt):
    └─────────┘ └──────────┘ └─────────┘
 ```
 
-**Backend-Änderung:** `HOST=0.0.0.0` statt `localhost` → bindet auf alle Netzwerk-Interfaces.
-
-**Produktionsmodus:** Backend serviert das gebaute Frontend als statische Dateien → nur **ein Port (3001)** nötig.
-
 ### 3.3 System-Architektur (Gesamt)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │              BROWSER (Chrome / Firefox / Handy)             │
 │  ┌───────────────────────────────────────────────────────┐  │
-│  │              React / Vite / Tailwind                  │  │
+│  │              React / Vite / Zustand                   │  │
 │  │  ┌──────────┐ ┌──────────┐ ┌────────────┐           │  │
-│  │  │   Chat   │ │  Memory  │ │  Settings  │   ...     │  │
-│  │  │Interface │ │Dashboard │ │   Panel    │           │  │
+│  │  │   Chat   │ │Entdecken │ │  Skills &  │   ...     │  │
+│  │  │Interface │ │  Seite   │ │Feature Hub │           │  │
 │  │  └────┬─────┘ └────┬─────┘ └─────┬──────┘           │  │
 │  │       └─────────────┴─────────────┘                   │  │
-│  │                     │                                 │  │
-│  │              Zustand Store                            │  │
+│  │              Zustand Store (40+ Views)                │  │
 │  │                     │                                 │  │
 │  │         Socket.io Client + REST API                   │  │
 │  └─────────────────────┬─────────────────────────────────┘  │
@@ -147,13 +118,12 @@ Speicher-Aufteilung (geschätzt):
 │  │  REST Routes │ WebSocket Events │ Static Files      │    │
 │  └──────────────────────┬──────────────────────────────┘    │
 │  ┌──────────────────────┴──────────────────────────────┐    │
-│  │                Service Layer                         │    │
+│  │                Service Layer (35+)                   │    │
 │  │  ┌──────────┐  ┌──────────┐  ┌──────────────────┐   │    │
 │  │  │    AI    │  │  Memory  │  │     Search       │   │    │
 │  │  │  Router  │  │ Manager  │  │   (ChromaDB)     │   │    │
 │  │  │ (5-Stage)│  │(5-Layer) │  │  (Semantic)      │   │    │
 │  │  └────┬─────┘  └────┬─────┘  └────────┬─────────┘   │    │
-│  │       │              │                 │             │    │
 │  │  ┌────┴────┐   ┌─────┴─────┐   ┌──────┴──────┐     │    │
 │  │  │ Claude  │   │  Prisma   │   │ Embeddings  │     │    │
 │  │  │ Ollama  │   │(Database) │   │(Transformers│     │    │
@@ -173,20 +143,19 @@ Speicher-Aufteilung (geschätzt):
 
 ## 4. Tech-Stack
 
-### 4.1 Frontend (Browser — KEIN Electron)
+### 4.1 Frontend (Browser)
 
 | Technologie | Version | Zweck |
 |------------|---------|-------|
 | React | 18+ | UI-Framework |
 | TypeScript | 5+ | Type Safety |
 | Vite | 5+ | Build Tool & Dev Server |
-| Tailwind CSS | 3+ | Styling |
-| Framer Motion | 12+ | Animationen |
 | Zustand | 5+ | State Management |
 | Socket.io Client | 4+ | Echtzeit-Kommunikation |
+| Lucide React | 0.469+ | Icons |
 | React Markdown | 9+ | Markdown-Rendering |
 | Rehype Highlight | 7+ | Syntax Highlighting |
-| Lucide React | 0.469+ | Icons |
+| Framer Motion | 12+ | Animationen |
 
 ### 4.2 Backend
 
@@ -205,103 +174,38 @@ Speicher-Aufteilung (geschätzt):
 
 | Technologie | Zweck |
 |------------|-------|
-| Anthropic SDK (Claude) | Cloud-KI für komplexe Aufgaben |
-| Ollama + Gemma3 12B | Lokale KI für schnelle/private Aufgaben |
-| Transformers.js | Lokale Embedding-Berechnung (kein API-Call nötig) |
-| ChromaDB | Vektor-Datenbank für semantische Suche |
+| Anthropic SDK (Claude) | Cloud-KI fuer komplexe Aufgaben |
+| Ollama + Gemma3 12B | Lokale KI fuer schnelle/private Aufgaben |
+| Transformers.js | Lokale Embedding-Berechnung (kein API-Call noetig) |
+| ChromaDB | Vektor-Datenbank fuer semantische Suche |
 
-### 4.4 Infrastruktur (Docker)
+### 4.4 Infrastruktur (Docker, optional)
 
 | Service | Image | Port | Zweck |
 |---------|-------|------|-------|
-| PostgreSQL | postgres:16-alpine | 5432 | Primäre Datenbank |
+| PostgreSQL | postgres:16-alpine | 5432 | Primaere Datenbank |
 | Redis | redis:7-alpine | 6379 | Caching & Session-Store |
 | ChromaDB | chromadb/chroma:latest | 8000 | Vektor-Datenbank |
 
 ---
 
-## 5. Audit-Ergebnisse (Claude + Manus.ai)
+## 5. Features im Detail
 
-### 5.1 Was funktioniert (bestätigt)
-
-| Feature | Status | Bewertung |
-|---------|--------|-----------|
-| Hybrid AI Router (5-Stage) | ✅ Funktional | Kernstück des Systems, gut implementiert |
-| 5-Layer Memory System | ✅ Funktional | Konzeptionell sehr durchdacht |
-| Echtzeit-Chat (WebSocket Streaming) | ✅ Funktional | Token-für-Token Streaming |
-| Semantische Suche (ChromaDB) | ✅ Funktional | Mit lokalen Embeddings |
-| Konversations-Management | ✅ Funktional | CRUD + Pinning |
-| Admin Panel (teilweise) | ⚠️ Teilweise | Memory-Ops funktionieren, Import fehlt |
-| Interview/Lernmodus | ✅ Funktional | SimpleInterviewService implementiert |
-| Web-Suche | ✅ Funktional | DuckDuckGo + Wikipedia |
-| Währungsrechner | ✅ Funktional | Echtzeit-Kurse |
-| Wetter | ✅ Funktional | OpenWeatherMap Integration |
-| Emotion Tracking | ✅ Funktional | Stimmungserkennung |
-| Wissensbasis (RAG) | ✅ Funktional | Dokument-Upload + Vektor-Suche |
-
-### 5.2 Kritische Probleme (gefunden)
-
-#### PROBLEM 1: Electron-Reste im Code
-- **Dateien:** `frontend/src/main/index.ts`, `frontend/src/preload/index.ts`
-- **Impact:** Toter Code, verwirrt Entwickler
-- **Fix:** Dateien löschen, keine Electron-Dependency installiert
-
-#### PROBLEM 2: Hardcoded `default-user` (12 Dateien)
-- **Backend:** `adminRoutes.ts`, `skillRoutes.ts`, `SkillProcessor.ts`, `userService.ts`
-- **Frontend:** `useAppStore.ts`, `AdminPanel.tsx`, `MemoryDashboard.tsx`, `EmotionDashboard.tsx`, `ProactiveNotifications.tsx`, `PredictiveAssistant.tsx`
-- **Scripts:** `cleanup_memories.ts`, `seed_memory.ts`
-- **Impact:** Keine Multi-User-Fähigkeit, kein Login
-- **Fix:** Zentrale `USER_ID` Konstante + später Auth-System
-
-#### PROBLEM 3: Voice/STT ist Platzhalter (501)
-- **Datei:** `backend/src/api/voice.ts`
-- **Impact:** Whisper STT gibt Fake-Text zurück, TTS-Voices sind hartcodiert
-- **Fix:** Web Speech API im Frontend nutzen (funktioniert bereits), Backend-Whisper optional
-
-#### PROBLEM 4: Admin Import nicht implementiert (501)
-- **Datei:** `backend/src/api/adminRoutes.ts` Zeile 73-78
-- **Impact:** Datei-Upload im Admin-Panel funktioniert nicht
-- **Fix:** Multer-Integration (ist bereits als Dependency vorhanden)
-
-#### PROBLEM 5: Plugin-System ist Platzhalter
-- **Datei:** `backend/src/services/plugins/PluginManager.ts`
-- **Impact:** Dynamisches Plugin-Loading nicht implementiert, nur Mock
-- **Fix:** Echtes Plugin-Interface mit dynamischem Import
-
-#### PROBLEM 6: MessageBubble-Actions nicht implementiert
-- **Datei:** `frontend/src/renderer/components/MessageBubble.tsx` Zeile 36-44
-- **Impact:** "Löschen" und "Als Memory speichern" Buttons loggen nur in Console
-- **Fix:** API-Calls implementieren
-
-#### PROBLEM 7: Dokumentation stimmt nicht mit Code überein
-- **Issue:** README/SETUP beschreiben Docker/PostgreSQL, aber SQLite wird genutzt
-- **Impact:** Neue Entwickler werden verwirrt
-- **Fix:** Dokumentation aktualisieren — beides dokumentieren (SQLite für Dev, PostgreSQL für Prod)
-
-#### PROBLEM 8: Admin Stats sind teilweise Mock
-- **Datei:** `backend/src/api/adminRoutes.ts` Zeile 17-33
-- **Impact:** API-Requests, Response Times, Cache Stats sind Fake-Werte
-- **Fix:** Echtes Tracking implementieren oder Mock-Felder entfernen
-
----
-
-## 6. Features im Detail
-
-### 6.1 Hybrid AI Router (5-Stufen-Orchestrator)
+### 5.1 Hybrid AI Router (5-Stufen-Orchestrator)
 
 ```
 Nachricht eingehend
        │
        ▼
 ┌──────────────┐
-│ Stage 1:     │──── Emotional/Persönlich? ──→ Ollama (Identität bewahren)
+│ Stage 1:     │──── Emotional/Persoenlich? ──→ Ollama
 │ Domain-      │
 │ Klassifikation│──── Code/Analyse/Planung? ──→ weiter zu Stage 2
 └──────┬───────┘
        ▼
 ┌──────────────┐
 │ Stage 2:     │──── Score < 70? ──→ Ollama (einfach genug)
-│ Komplexitäts-│
+│ Komplexitaets-│
 │ bewertung    │──── Score ≥ 70? ──→ weiter zu Stage 3
 └──────┬───────┘
        ▼
@@ -326,49 +230,92 @@ Nachricht eingehend
 **Konfiguration (.env):**
 ```env
 ENABLE_ORCHESTRATOR=true
-CLAUDE_THRESHOLD=0.85        # Ab wann Claude genutzt wird
+CLAUDE_THRESHOLD=0.85
 SELF_CONFIDENCE_THRESHOLD=0.65
 COMPLEXITY_THRESHOLD=70
 ```
 
-### 6.2 5-Schicht-Gedächtnissystem
+### 5.2 5-Schicht-Gedaechtnissystem
 
 | Schicht | Lebensdauer | Zweck | Beispiel |
 |---------|-------------|-------|----------|
 | **Working Memory** | 1-4 Stunden | Aktive Session | "User fragt gerade nach Python" |
-| **Short-Term** | 1-7 Tage | Kürzliche Infos | "Gestern sprach er über sein Projekt" |
-| **Long-Term** | Permanent | Wichtige Fakten | "User heißt Thorben, mag TypeScript" |
-| **Episodic** | Variabel | Ereignisse | "Am 15.03. hatte er ein Vorstellungsgespräch" |
+| **Short-Term** | 1-7 Tage | Kuerzliche Infos | "Gestern sprach er ueber sein Projekt" |
+| **Long-Term** | Permanent | Wichtige Fakten | "User mag TypeScript" |
+| **Episodic** | Variabel | Ereignisse | "Am 15.03. hatte er ein Vorstellungsgespraech" |
 | **Semantic** | Permanent | Strukturiertes Wissen | "TypeScript ist eine Obermenge von JavaScript" |
 
 **Mechanismen:**
-- **Importance Scoring:** Keywords, Komplexität, Code-Präsenz, Feedback, Zugriffshäufigkeit
-- **Automatic Consolidation:** Ähnliche Erinnerungen werden zusammengeführt
+- **Importance Scoring:** Keywords, Komplexitaet, Code-Praesenz, Feedback, Zugriffshaeufigkeit
+- **Automatic Consolidation:** Aehnliche Erinnerungen werden zusammengefuehrt
 - **Memory Decay:** Unwichtige Erinnerungen verblassen mit der Zeit
 - **Promotion:** Wichtige Short-Term → Long-Term
 - **Context Window:** Intelligente Auswahl relevanter Erinnerungen (max ~5000 Tokens)
-- **Knowledge Graph:** Relationen zwischen Erinnerungen für besseres Reasoning
+- **Knowledge Graph:** Relationen zwischen Erinnerungen fuer besseres Reasoning
 
-### 6.3 Weitere implementierte Features
+### 5.3 Entdecken-Seite
 
-- **Semantische Suche:** Volltextsuche über Konversationen (Ctrl+K), ChromaDB + lokale Embeddings
-- **Voice I/O:** Web Speech API im Frontend (STT + TTS), Whisper-Backend noch Platzhalter
-- **Proaktive Intelligenz:** Kontext-Monitoring, Morgengrüße, Abend-Zusammenfassungen
-- **Lernmodus:** Interview-Sessions mit Fragen zur Persönlichkeitsentwicklung
-- **Admin-Panel:** Memory-Extraktion, Cleanup, Working-Memory-Reset, API-Usage-Tracking
-- **Settings:** KI-Verhalten, Privacy-Modi, Appearance
-- **Web-Suche:** DuckDuckGo + Wikipedia Integration
-- **Währungsrechner:** Echtzeit USD→EUR Konversion
-- **Wetter:** OpenWeatherMap mit Vorhersage
-- **Emotion Tracking:** Stimmungserkennung in Gesprächen
-- **Wissensbasis (RAG):** Dokumente importieren und per Vektor-Suche abfragen
-- **Code-Ausführung:** Sandboxed mit Guardrails
+Interaktive Uebersichtsseite (inspiriert von Microsoft Copilot):
+
+- **Hero-Banner** mit animierten SVG-Illustrationen und tageszeitabhaengiger Begruessung
+- **Schnellstart-Buttons** fuer Neuer Chat, Morgenbriefing, Challenges, Whiteboard
+- **Prompt-Vorschlaege** nach 7 Kategorien: Lernen, Programmieren, Kreativ, Produktivitaet, Analyse, Recherche, Alltag
+- **Feature-Karten** mit SVG-Illustrationen fuer alle Magic Features
+- Jede Karte navigiert direkt zum entsprechenden Feature
+
+### 5.4 Magic Features
+
+Einzigartige Funktionen, die ueber einen klassischen Chatbot hinausgehen:
+
+| Feature | Beschreibung | Technik |
+|---------|-------------|---------|
+| **Morgenbriefing** | Taeglich personalisierte Zusammenfassung mit Wetter, Streaks und Vorschlaegen | Wetter-API, Summary-API, Streaks in localStorage |
+| **Interessen-Radar** | Radar-Chart zur Visualisierung der Interessen in 6 Kategorien (Technik, Wissenschaft, Kreativitaet, Produktivitaet, Soziales, Lernen) | Canvas API (HiDPI), Keyword-Analyse aus Memories + Konversationen |
+| **Gedanken-Zeitstrahl** | Chronologische Timeline aller Gespraeche, Erinnerungen, Recherchen und Zeitkapseln | Conversations-API, Memory-API, Capsules-API, gruppiert nach Datum |
+| **Geheime Notizen** | PIN-geschuetzter privater Notiz-Editor | localStorage mit Base64-Kodierung, PIN als btoa() |
+| **KI-Tagebuch** | NEON schreibt automatisch ein Journal ueber eure Gespraeche | Summary-API, automatische Textgenerierung auf Deutsch, localStorage |
+| **Challenges** | 7 Challenge-Typen mit Streaks und 6 Badges | Deterministisch aus Datum, Stats in localStorage |
+| **Zeitkapseln** | Nachrichten an dein zukuenftiges Ich planen | Backend Capsules-API mit automatischem Oeffnen |
+| **Agenten-Ketten** | Mehrstufige KI-Workflows automatisieren | Backend Chain-Execution mit Schritt-fuer-Schritt-Verarbeitung |
+| **Whiteboard** | Zeichnen, Formen, Text mit Undo/Redo und PNG-Export | Canvas API, Toolbar mit Werkzeugen |
+| **Dateien-RAG** | Lokale Ordner indexieren und semantisch durchsuchen | Embeddings + Vektor-Suche ueber lokale Dateien |
+| **Tagesrueckblick** | Automatische Zusammenfassung des Tages | Summary-API aggregiert Konversationen + Memories |
+| **Erklaer-Stufen** | Jede Antwort auf 5 Niveaus erklaeren lassen | Kind (5), Schueler (12), Student, Fachperson, Experte (PhD) |
+
+### 5.5 Skills & Feature Hub
+
+Zentraler Ort fuer alle erweiterten Funktionen:
+
+- **Backend-Skills** aus API mit Toggle-Schalter und Settings
+- **NEON Features** als Karten-Grid mit Kategorie-Filter (Alle / Magic / Produktivitaet / Kreativ)
+- Jede Feature-Karte navigiert direkt zum entsprechenden View
+
+### 5.6 Weitere implementierte Features
+
+| Feature | Beschreibung |
+|---------|-------------|
+| **Slash-Commands** | `/wetter`, `/suche`, `/code`, `/kapsel`, `/recherche`, `/memory`, `/hilfe` direkt im Chat |
+| **Konversations-Export** | Chats als Markdown oder Text exportieren |
+| **Dark/Light/OLED Themes** | 3 Farbschemata mit visueller Vorschau |
+| **Drag & Drop** | Dateien direkt in den Chat ziehen (Bilder, PDFs, Text) |
+| **Multi-User** | Mehrere Profile mit eigenen Avataren und separatem Gedaechtnis |
+| **Sprach-Persoenlichkeiten** | 5 KI-Modi: Sachlich, Freundlich, Sarkastisch, Lehrer, Pirat |
+| **Konversations-Verzweigung** | Ab jeder Nachricht einen alternativen Gespraechsverlauf starten |
+| **Code-Ausfuehrung** | JavaScript, Python, PowerShell in einer Sandbox |
+| **Web-Suche** | DuckDuckGo + Wikipedia Integration |
+| **Auto-Learning** | Manuelle Recherche, Ergebnisse werden im Gedaechtnis gespeichert |
+| **Wetter** | OpenWeatherMap Integration mit Vorhersage |
+| **Emotion Tracking** | Stimmungserkennung in Gespraechen |
+| **Proaktive KI** | Kontext-Monitoring, Vorschlaege, Morgengruesse |
+| **Admin Panel** | Memory-Management, Extraktion, API-Kosten-Tracking, Performance-Dashboard |
+| **Voice I/O** | Web Speech API im Browser (STT + TTS) |
+| **PWA** | Installierbar als App mit Push-Notifications und Offline-Support |
 
 ---
 
-## 7. Datenbank-Schema
+## 6. Datenbank-Schema
 
-### 7.1 Kern-Tabellen
+### 6.1 Kern-Tabellen
 
 ```
 ┌─────────────┐     ┌──────────────┐     ┌──────────────┐
@@ -383,7 +330,7 @@ COMPLEXITY_THRESHOLD=70
                                          └──────────────┘
 ```
 
-### 7.2 Memory-Tabellen
+### 6.2 Memory-Tabellen
 
 ```
 ┌────────────────┐     ┌────────────────┐
@@ -407,24 +354,24 @@ COMPLEXITY_THRESHOLD=70
                        └────────────────┘
 ```
 
-### 7.3 Weitere Tabellen
+### 6.3 Weitere Tabellen
 
 | Tabelle | Zweck |
 |---------|-------|
 | `user_preferences` | Einstellungen pro User |
 | `api_usage` | Token-Tracking & Kosten (Claude) |
 | `documents` | Hochgeladene Dateien (RAG) |
-| `feedback` | User-Feedback für Lernmodus |
-| `proactive_messages` | Vorschläge & Erinnerungen |
+| `feedback` | User-Feedback fuer Lernmodus |
+| `proactive_messages` | Vorschlaege & Erinnerungen |
 | `episodes` | Zeitgebundene Ereignisse |
 | `knowledge_entries` | Semantisches Wissen |
 | `memory_extractions` | Extraktions-Audit-Trail |
 
 ---
 
-## 8. API-Referenz
+## 7. API-Referenz
 
-### REST Endpoints (Auszug)
+### REST Endpoints
 
 ```
 ── Core ──
@@ -434,7 +381,7 @@ GET  /api/config                        → Aktuelle Konfiguration
 ── Konversationen ──
 POST /api/conversations                 → Chat erstellen
 GET  /api/conversations/:userId         → Chats auflisten
-DELETE /api/conversations/:id           → Chat löschen
+DELETE /api/conversations/:id           → Chat loeschen
 
 ── Memory ──
 GET  /api/memory/:userId                → Erinnerungen abrufen
@@ -450,15 +397,30 @@ POST /api/search/reindex                → Alle Nachrichten neu indexieren
 ── Admin ──
 GET  /api/admin/stats                   → System-Statistiken
 POST /api/admin/extract-memories        → Memory-Extraktion triggern
-POST /api/admin/cleanup-memories        → Memories nach Filter löschen
+POST /api/admin/cleanup-memories        → Memories nach Filter loeschen
 POST /api/admin/memory/clear-working    → Working Memory leeren
 GET  /api/admin/usage                   → API-Kosten (EUR)
-POST /api/admin/import                  → ⚠️ 501 — NOCH NICHT IMPLEMENTIERT
+GET  /api/admin/performance             → Performance-Metriken
 
 ── Skills ──
 GET  /api/skills                        → Skills auflisten
-POST /api/skills/knowledge-base/upload  → Dokument für RAG hochladen
+PATCH /api/skills/:id/toggle            → Skill aktivieren/deaktivieren
+POST /api/skills/knowledge-base/upload  → Dokument fuer RAG hochladen
 POST /api/skills/knowledge-base/query   → RAG-Abfrage
+
+── Magic ──
+POST /api/magic/capsules                → Zeitkapsel erstellen
+GET  /api/magic/capsules/:userId        → Zeitkapseln abrufen
+GET  /api/magic/weather                 → Wetter abfragen
+GET  /api/summary/daily                 → Tages-Zusammenfassung
+
+── Code ──
+POST /api/code/execute                  → Code ausfuehren (JS/Python/PS)
+
+── RAG ──
+POST /api/rag/index                     → Ordner indexieren
+GET  /api/rag/search?q=query            → RAG-Suche
+GET  /api/rag/status                    → RAG-Status
 
 ── Settings ──
 GET  /api/settings                      → Einstellungen laden
@@ -471,12 +433,12 @@ POST /api/settings                      → Einstellungen speichern
 ── Client → Server ──
 user-message          → Chat-Nachricht senden (mit Streaming)
 get-conversations     → Chats laden
-delete-conversation   → Chat löschen
+delete-conversation   → Chat loeschen
 rename-conversation   → Chat umbenennen
 typing-start/stop     → Tipp-Indikator
 
 ── Server → Client ──
-ai-response-chunk     → Streaming-Antwort (Token für Token)
+ai-response-chunk     → Streaming-Antwort (Token fuer Token)
 ai-response-complete  → Antwort fertig
 conversations-list    → Aktualisierte Chat-Liste
 typing-indicator      → KI tippt
@@ -485,61 +447,7 @@ error                 → Fehlermeldungen
 
 ---
 
-## 9. Fixplan — Priorisiert
-
-### PHASE A: Sofort (Electron raus + Netzwerk + kritische Fixes)
-
-| # | Task | Datei(en) | Aufwand |
-|---|------|-----------|---------|
-| A1 | **Electron-Dateien löschen** | `frontend/src/main/index.ts`, `frontend/src/preload/index.ts` | 5 min |
-| A2 | **`window.electron` Referenzen entfernen** | Alle Frontend-Dateien die darauf zugreifen | 15 min |
-| A3 | **Backend auf `0.0.0.0` binden** | `backend/src/index.ts` Zeile 14: `HOST=0.0.0.0` | 2 min |
-| A4 | **Backend serviert Frontend** (Prod) | `backend/src/index.ts` — gebautes Frontend als Static Files | 30 min |
-| A5 | **Vite Dev-Server für Netzwerk** | `frontend/vite.config.ts` — `server.host: '0.0.0.0'` | 2 min |
-| A6 | **CORS für LAN konfigurieren** | `backend/src/index.ts` — Origin auf LAN-IPs erlauben | 10 min |
-| A7 | **Dokumentation updaten** | `README.md`, `SETUP.md` — SQLite-Realität + Netzwerk-Setup | 30 min |
-| A8 | **Start-Scripts anpassen** | `start_all.bat`, `package.json` — kein Electron mehr | 15 min |
-
-### PHASE B: Diese Woche (Unvollständige Features fixen)
-
-| # | Task | Datei(en) | Aufwand |
-|---|------|-----------|---------|
-| B1 | **Admin Import implementieren** | `adminRoutes.ts` — Multer für File-Upload (TXT, MD, JSON, CSV) | 2h |
-| B2 | **MessageBubble Actions** | `MessageBubble.tsx` — Delete + Save-to-Memory API-Calls | 1h |
-| B3 | **Admin Stats echte Werte** | `adminRoutes.ts` — Mock-Werte durch echte Metriken ersetzen oder entfernen | 1h |
-| B4 | **Zentrale USER_ID** | Alle 12 Dateien — `default-user` in eine Konstante auslagern | 1h |
-| B5 | **Voice STT verbessern** | `voice.ts` — Web Speech API reicht fürs Frontend, Backend-Endpoint dokumentieren | 30 min |
-| B6 | **Error Boundaries** | Frontend — React Error Boundaries für alle Views | 1h |
-
-### PHASE C: Nächste Wochen (Stabilisierung)
-
-| # | Task | Beschreibung | Aufwand |
-|---|------|-------------|---------|
-| C1 | **Unit Tests** | AI Router, Memory Manager, API Routes | 1 Woche |
-| C2 | **GitHub Actions CI/CD** | Build + Lint + Test bei jedem Push | 2h |
-| C3 | **Zod-Validierung** | API Request/Response Schemas | 1 Tag |
-| C4 | **Strukturiertes Logging** | JSON-Format mit Request-IDs | 4h |
-| C5 | **Plugin-System echte Implementierung** | `PluginManager.ts` — dynamisches Loading statt Mock | 1 Tag |
-| C6 | **Ollama Upgrade** | `gemma3:4b` → `gemma3:12b` (passt in 12 GB VRAM) | 30 min |
-
-### PHASE D: Langfristig (Neue Features)
-
-| # | Task | Beschreibung |
-|---|------|-------------|
-| D1 | **Auth-System** | Login/Token für Netzwerk-Zugriff (Basic Auth oder JWT) |
-| D2 | **HTTPS/TLS** | Verschlüsselte Verbindung im LAN |
-| D3 | **Multi-Modell-Routing** | Code → deepseek-coder, Chat → gemma3, Komplex → Claude |
-| D4 | **PWA-Manifest** | App-Feeling im Browser, Offline-Support |
-| D5 | **Responsive Design** | Mobile-Optimierung für Handy-Zugriff |
-| D6 | **Message Actions** | Kopieren, Bearbeiten, Regenerieren |
-| D7 | **Dark/Light Theme** | Theme Toggle (aktuell nur Dark) |
-| D8 | **Chat-Export** | PDF / Markdown Export |
-| D9 | **GPU-Embeddings** | ONNX Runtime + CUDA für schnellere Vektoren |
-| D10 | **Monitoring Dashboard** | CPU, RAM, GPU, Token-Usage in Echtzeit |
-
----
-
-## 10. Projektstruktur (nach Umbau)
+## 8. Projektstruktur
 
 ```
 neon-ai-assistant/
@@ -555,63 +463,58 @@ neon-ai-assistant/
 │   │   │   ├── skillRoutes.ts       # Skills-Management
 │   │   │   ├── uploadRoutes.ts      # Datei-Uploads
 │   │   │   ├── proactiveRoutes.ts   # Proaktive KI
-│   │   │   ├── magicRoutes.ts       # Advanced Features
+│   │   │   ├── magicRoutes.ts       # Capsules, Weather, Summary
 │   │   │   └── voice.ts             # Voice I/O
 │   │   ├── services/                # 35+ Business Logic Services
 │   │   │   ├── router/              # AI Routing (5-Stage Orchestrator)
 │   │   │   ├── claude/              # Claude API Integration
 │   │   │   ├── ollama/              # Ollama/Gemma3 Integration
 │   │   │   ├── memory/              # 5-Layer Memory System
-│   │   │   │   ├── MemoryManagerService.ts
-│   │   │   │   ├── WorkingMemoryService.ts
-│   │   │   │   ├── ShortTermMemoryService.ts
-│   │   │   │   ├── ImportanceScorer.ts
-│   │   │   │   ├── DecayService.ts
-│   │   │   │   ├── ExtractionService.ts
-│   │   │   │   └── RelationService.ts
 │   │   │   ├── search/              # Semantische Suche (ChromaDB)
 │   │   │   ├── embeddings/          # Vektor-Generierung (Transformers.js)
 │   │   │   ├── learning/            # Lernmodus / Interview
 │   │   │   ├── proactive/           # Kontext-Monitoring
 │   │   │   ├── plugins/             # Plugin-Manager
-│   │   │   ├── skills/              # Skill-Logik (Wetter, etc.)
-│   │   │   └── ...                  # Weitere Services
+│   │   │   ├── skills/              # Skill-Logik (Wetter, RAG, etc.)
+│   │   │   └── ...
 │   │   └── utils/                   # Logger, Helpers, Security
 │   ├── prisma/
 │   │   └── schema.prisma            # Datenbank-Schema (16 Tabellen)
-│   ├── data/                        # Hunspell, Uploads
 │   └── package.json
 │
-├── frontend/                         # React Web-App (KEIN Electron!)
+├── frontend/                         # React Web-App
 │   ├── src/
-│   │   ├── App.tsx                  # Haupt-Komponente
-│   │   ├── main.tsx                 # React Entry Point
-│   │   ├── components/              # 23+ UI-Komponenten
-│   │   │   ├── ChatInterface.tsx
-│   │   │   ├── MessageBubble.tsx
-│   │   │   ├── ChatInput.tsx
-│   │   │   ├── SemanticSearch.tsx
-│   │   │   ├── MemoryDashboard.tsx
-│   │   │   ├── AdminPanel.tsx
-│   │   │   ├── SettingsPanel.tsx
-│   │   │   └── ...
-│   │   ├── store/useAppStore.ts     # Zustand State
-│   │   ├── services/                # STT, TTS Services
-│   │   └── styles/                  # CSS / Tailwind
+│   │   ├── renderer/
+│   │   │   ├── App.tsx              # Haupt-Komponente mit Sidebar + Routing
+│   │   │   ├── components/          # 40+ UI-Komponenten
+│   │   │   │   ├── ChatInterface.tsx
+│   │   │   │   ├── MessageBubble.tsx    # Chat-Blasen mit Erklaer-Stufen
+│   │   │   │   ├── DiscoverPage.tsx     # Entdecken-Seite mit SVG-Illustrationen
+│   │   │   │   ├── SkillStore.tsx       # Skills & Feature Hub
+│   │   │   │   ├── MorningBriefing.tsx  # Morgenbriefing
+│   │   │   │   ├── PersonalityRadar.tsx # Interessen-Radar (Canvas)
+│   │   │   │   ├── ThoughtTimeline.tsx  # Gedanken-Zeitstrahl
+│   │   │   │   ├── SecretNotes.tsx      # Geheime Notizen (PIN)
+│   │   │   │   ├── AIDiary.tsx          # KI-Tagebuch
+│   │   │   │   ├── ChallengeMode.tsx    # Challenges mit Badges
+│   │   │   │   ├── WhiteboardCanvas.tsx # Whiteboard
+│   │   │   │   ├── SemanticSearch.tsx
+│   │   │   │   ├── MemoryDashboard.tsx
+│   │   │   │   ├── AdminPanel.tsx
+│   │   │   │   ├── SettingsPanel.tsx
+│   │   │   │   └── ...
+│   │   │   ├── store/useAppStore.ts # Zustand State (22 ViewModes)
+│   │   │   ├── services/            # STT, TTS Services
+│   │   │   └── styles/
+│   │   └── main.tsx                 # React Entry Point
 │   ├── index.html
-│   ├── vite.config.ts               # Vite (kein Electron!)
-│   └── package.json                 # Keine Electron-Dependency
+│   ├── vite.config.ts
+│   └── package.json
 │
-│   ❌ GELÖSCHT: src/main/index.ts   (Electron Main)
-│   ❌ GELÖSCHT: src/preload/index.ts (Electron Preload)
-│
-├── shared/types/index.ts            # Geteilte TypeScript-Typen
+├── shared/types/                    # Geteilte TypeScript-Typen
+├── docker/                          # Docker Compose (PostgreSQL, Redis, ChromaDB)
+├── docs/screenshots/                # SVG-Illustrationen fuer README
 ├── scripts/                         # Wartungs-Skripte
-├── docker/
-│   ├── docker-compose.yml           # PostgreSQL + Redis + ChromaDB
-│   └── .env.example
-├── .github/workflows/ci.yml         # CI/CD Pipeline (TODO)
-├── .gitignore
 ├── KONZEPT_V2.md                    # ← Dieses Dokument
 ├── README.md
 ├── SETUP.md
@@ -620,15 +523,15 @@ neon-ai-assistant/
 
 ---
 
-## 11. Konfiguration
+## 9. Konfiguration
 
-### 11.1 Backend (.env)
+### 9.1 Backend (.env)
 
 ```env
 # ── Server ──
 NODE_ENV=development
 PORT=3001
-HOST=0.0.0.0                          # ← Netzwerk-Zugriff (alle Interfaces)
+HOST=0.0.0.0
 
 # ── Datenbank ──
 DATABASE_URL="file:./prisma/neon.db"   # SQLite (aktuell)
@@ -637,7 +540,7 @@ DATABASE_URL="file:./prisma/neon.db"   # SQLite (aktuell)
 # ── AI Services ──
 ANTHROPIC_API_KEY=sk-ant-api03-...
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=gemma3:12b                # 12B passt in RTX 3060 (12 GB VRAM)
+OLLAMA_MODEL=gemma3:12b
 
 # ── AI Router ──
 ENABLE_ORCHESTRATOR=true
@@ -653,14 +556,14 @@ REDIS_URL=redis://localhost:6379
 CHROMA_URL=http://localhost:8000
 ```
 
-### 11.2 Vite Dev-Server (Frontend)
+### 9.2 Vite Dev-Server (Frontend)
 
 ```ts
 // frontend/vite.config.ts
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: '0.0.0.0',     // ← Im Netzwerk erreichbar
+    host: '0.0.0.0',
     port: 5173,
     proxy: {
       '/api': 'http://localhost:3001',
@@ -670,15 +573,10 @@ export default defineConfig({
       },
     },
   },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src/renderer'),
-    },
-  },
 });
 ```
 
-### 11.3 Docker Compose
+### 9.3 Docker Compose (optional)
 
 ```yaml
 services:
@@ -709,87 +607,71 @@ volumes:
 
 ---
 
-## 12. Zugriff & Nutzung
-
-### Development
-
-```bash
-# 1. Docker-Services starten (falls PostgreSQL/Redis/ChromaDB gewünscht)
-cd docker && docker compose up -d
-
-# 2. Backend + Frontend starten
-npm run dev
-
-# 3. Im Browser öffnen:
-#    Lokal:    http://localhost:5173
-#    Netzwerk: http://192.168.x.x:5173  (von jedem Gerät im LAN)
-```
-
-### Production
-
-```bash
-# 1. Frontend bauen
-cd frontend && npm run build
-
-# 2. Build-Output nach Backend kopieren
-# (oder Backend konfigurieren um ../frontend/dist zu servieren)
-
-# 3. Nur Backend starten — serviert alles über Port 3001
-cd backend && npm start
-
-# 4. Im Browser öffnen:
-#    http://192.168.x.x:3001  (ein Port für alles)
-```
-
----
-
-## 13. Verhaltensregeln (AGENT_RULES)
+## 10. Verhaltensregeln (AGENT_RULES)
 
 | Regel | Beschreibung |
 |-------|-------------|
-| **Memory ≠ Gesprächsthema** | Gespeicherte Fakten werden nicht ungefragt erwähnt |
-| **Drittpersonen-Schutz** | Infos über andere Personen werden sensibel behandelt |
+| **Memory ≠ Gespraechsthema** | Gespeicherte Fakten werden nicht ungefragt erwaehnt |
+| **Drittpersonen-Schutz** | Infos ueber andere Personen werden sensibel behandelt |
 | **Sensitive Tags** | `#sensitive`, `#deceased`, `#private` → besondere Vorsicht |
 | **Reality Check** | KI kennt ihre Grenzen und gibt das zu |
-| **Kein Moral Momentum** | Keine Überreaktionen auf emotionale Inhalte |
+| **Kein Moral Momentum** | Keine Ueberreaktionen auf emotionale Inhalte |
 | **Privacy Respekt** | Gespeicherte Infos werden nicht proaktiv offengelegt |
 
 ---
 
-## 14. Projekt-Statistiken
+## 11. Projekt-Statistiken
 
 | Metrik | Wert |
 |--------|------|
 | Backend Services | 35+ |
 | API Endpoints | 70+ |
-| UI Komponenten | 23+ |
+| UI Komponenten | 40+ |
+| ViewModes | 22 |
 | Datenbank-Tabellen | 16 |
+| Magic Features | 12 |
 | Architektur | Monorepo (3 Workspaces) |
-| Codezeilen | ~14.000+ |
-| Dateien | 130+ |
-| Hardcoded `default-user` | 12 Dateien (zu fixen) |
-| Platzhalter (501) | 2 Endpoints |
-| TODO/FIXME | 4 Stellen |
+| Codezeilen | ~18.000+ |
+| Dateien | 150+ |
 
 ---
 
-## 15. Roadmap (kompakt)
+## 12. Status aller Phasen
 
-```
-JETZT          Phase A: Electron raus, Netzwerk-Zugriff, Doku fixen
-               ──────────────────────────────────────────────────
-DIESE WOCHE    Phase B: Admin Import, MessageBubble Actions,
-                        Error Boundaries, Voice aufräumen
-               ──────────────────────────────────────────────────
-NÄCHSTE WOCHEN Phase C: Tests, CI/CD, Zod-Validierung,
-                        Plugin-System, Ollama Upgrade (12B)
-               ──────────────────────────────────────────────────
-LANGFRISTIG    Phase D: Auth, HTTPS, Multi-Modell, PWA,
-                        Responsive, Chat-Export, GPU-Embeddings
-```
+| Phase | Feature | Status |
+|-------|---------|--------|
+| 0-4 | Infrastruktur, Chat, Datenbank, AI-Integration | Fertig |
+| 5 | Semantische Suche (ChromaDB + Embeddings) | Fertig |
+| 6 | 5-Layer Memory System | Fertig |
+| 7 | Admin Panel | Fertig |
+| 8 | Voice I/O (Web Speech API) | Fertig |
+| 9 | Proaktive KI | Fertig |
+| 10 | Lernmodus | Fertig |
+| 11 | Settings | Fertig |
+| 12 | Code-Tools (Sandbox) | Fertig |
+| 13 | Plugin/Skill-System | Fertig |
+| 14 | Web-Suche & Skills | Fertig |
+| 15 | Performance-Dashboard | Fertig |
+| 16 | Security (Auth, Rate-Limiting, CORS) | Fertig |
+| 17 | Magic Features v1 (Emotions, Zeitkapseln, Predictive) | Fertig |
+| 18 | Magic Features v2 (Briefing, Radar, Timeline, Notizen, Tagebuch, Challenges) | Fertig |
+| 19 | Entdecken-Seite & Feature Hub | Fertig |
+
+---
+
+## 13. Roadmap
+
+### Naechste Schritte
+
+- Responsive Design (Mobile-Optimierung)
+- Multi-Modell-Routing (Code-Modell + Chat-Modell)
+- CI/CD Pipeline (GitHub Actions)
+- Unit Tests fuer Kern-Services
+- Whisper STT Integration (Backend)
+- GPU-Embeddings (ONNX Runtime + CUDA)
 
 ---
 
 > **Dieses Dokument wird fortlaufend aktualisiert.**
-> Letzte Änderung: 2026-03-21
-> Quellen: Eigene Code-Analyse, Claude-Review, Manus.ai Audit
+> Letzte Aenderung: 2026-03-27
+> Gebaut von Downloader4k mit Claude AI.

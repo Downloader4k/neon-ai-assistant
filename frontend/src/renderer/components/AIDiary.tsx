@@ -55,12 +55,12 @@ export default function AIDiary() {
 
       let diary = `**${dayName}, ${dateStr}**\n\n`;
       diary += `Heute war ein ${data.conversations > 3 ? 'sehr aktiver' : data.conversations > 1 ? 'produktiver' : 'ruhiger'} Tag. `;
-      diary += `Thorben und ich haben ${data.conversations || 0} Gespraech${data.conversations !== 1 ? 'e' : ''} gefuehrt `;
+      diary += `Der Nutzer und ich haben ${data.conversations || 0} Gespraech${data.conversations !== 1 ? 'e' : ''} gefuehrt `;
       diary += `mit insgesamt ${data.messages || 0} Nachrichten.\n\n`;
 
       if (topics.length > 0) {
         diary += `Besonders interessant waren die Recherchen zu: ${topics.join(', ')}. `;
-        diary += `Es zeigt sich, dass Thorbens Wissenshunger in diesen Bereichen waechst.\n\n`;
+        diary += `Es zeigt sich, dass der Wissenshunger in diesen Bereichen waechst.\n\n`;
       }
 
       if (data.memoryEntries > 0) {
@@ -80,7 +80,7 @@ export default function AIDiary() {
       diary += `Die Stimmung heute: ${mood}. `;
 
       if (data.conversations > 0) {
-        diary += `Ich freue mich auf den naechsten Tag mit Thorben.`;
+        diary += `Ich freue mich auf den naechsten Tag.`;
       }
 
       const entry: DiaryEntry = {

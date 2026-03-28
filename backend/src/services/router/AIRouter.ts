@@ -327,7 +327,7 @@ WICHTIGE ANWEISUNGEN:
                     // Zeit- und Datumsberechnungen
                     /vor (wie viel|\d+) (jahren|monaten|tagen)/i,
                     /im jahr \d{4}/i,
-                    /\d{1,2}\.\d{1,2}\.\d{4}/i  // Datumsformat: 25.03.1991
+                    /\d{1,2}\.\d{1,2}\.\d{4}/i  // Datumsformat: DD.MM.YYYY
                 ];
                 
                 // Wenn irgendein Pattern passt, verwende Claude

@@ -55,7 +55,7 @@ const loadPersistedUsers = (): UserProfile[] => {
         const stored = localStorage.getItem('neon-users');
         if (stored) return JSON.parse(stored);
     } catch {}
-    const defaults: UserProfile[] = [{ id: 'default-user', name: 'Thorben', avatar: '👤' }];
+    const defaults: UserProfile[] = [{ id: 'default-user', name: 'User', avatar: '👤' }];
     localStorage.setItem('neon-users', JSON.stringify(defaults));
     return defaults;
 };

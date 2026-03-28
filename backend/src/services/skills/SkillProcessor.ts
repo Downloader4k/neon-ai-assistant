@@ -18,7 +18,7 @@ export class SkillProcessor {
             logger.info('SkillProcessor: Detected Weather Intent');
             
             // 1. Get default location from preferences
-            const defaultLocation = await userPreferenceService.getPreference(userId, 'location') || 'Wiefelstede';
+            const defaultLocation = await userPreferenceService.getPreference(userId, 'location') || 'Berlin';
             let location = defaultLocation;
             
             // 2. Extract location logic

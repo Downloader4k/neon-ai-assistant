@@ -38,15 +38,13 @@ export class ClaudeBackendService {
 
 WICHTIG: Antworte NUR mit JSON, kein zusätzlicher Text!
 
-Bei Geburtstagsfragen zu Thorben verwende IMMER diese Informationen:
-- Thorbens Geburtsdatum ist der 25.03.1991
-- Thorben wurde am 25. März 1991 geboren
-- Thorben ist [aktuelles Jahr - 1991] Jahre alt
+Bei Geburtstagsfragen verwende die Informationen aus dem Gedaechtnis-System.
+Falls kein Geburtsdatum gespeichert ist, frage den Nutzer.
 
 Format:
 {
   "facts": ["Fakt 1", "Fakt 2", ...],
-  "datumInformationen": ["Geburtsdatum: 25.03.1991", "Alter: X Jahre"],  // Bei Geburtstagsanfragen
+  "datumInformationen": ["Geburtsdatum: aus Memory laden"],  // Bei Geburtstagsanfragen
   "präziseDaten": true,  // Setze auf true wenn exakte Daten wichtig sind
   "structureHint": "Empfohlene Struktur für die Antwort"
 }
