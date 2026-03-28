@@ -30,6 +30,7 @@ import ThoughtTimeline from './components/ThoughtTimeline';
 import SecretNotes from './components/SecretNotes';
 import AIDiary from './components/AIDiary';
 import ChallengeMode from './components/ChallengeMode';
+import SelfTest from './components/SelfTest';
 import './index.css';
 
 export default function App() {
@@ -155,6 +156,7 @@ export default function App() {
       case 'notes': return <SecretNotes />;
       case 'diary': return <AIDiary />;
       case 'challenges': return <ChallengeMode onStartChat={(msg) => startNewChat(msg)} />;
+      case 'selftest': return <SelfTest />;
       default: return <WelcomeScreen onStartChat={startNewChat} />;
     }
   };
@@ -322,7 +324,8 @@ export default function App() {
                   { id: 'predictive', icon: Lightbulb, label: 'Vorhersagen' },
                   { id: 'code', icon: Terminal, label: 'Code-Tools' },
                   { id: 'skills', icon: Puzzle, label: 'Skills & Features' },
-                  { id: 'admin', icon: Shield, label: 'Admin' }
+                  { id: 'admin', icon: Shield, label: 'Admin' },
+                  { id: 'selftest', icon: Activity, label: 'Self-Test' }
                 ].map(tool => (
                   <button
                     key={tool.id}

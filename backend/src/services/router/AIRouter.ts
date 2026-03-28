@@ -66,7 +66,7 @@ export class AIRouter {
             complexityThreshold: parseInt(process.env.COMPLEXITY_THRESHOLD || '30', 10),
             enableHybridMode: process.env.ENABLE_HYBRID_MODE === 'true',
             privacyMode: process.env.PRIVACY_MODE === 'true',
-            ollamaModel: 'gemma3:4b', // Fest auf Gemma3 4b eingestellt für optimale Performance
+            ollamaModel: process.env.OLLAMA_MODEL || 'gemma3:12b',
             enableOrchestrator: process.env.ENABLE_ORCHESTRATOR !== 'false', // Default: true
             selfConfidenceThreshold: parseFloat(process.env.SELF_CONFIDENCE_THRESHOLD || '0.55'),
             claudeThreshold: parseFloat(process.env.CLAUDE_THRESHOLD || '0.8'),

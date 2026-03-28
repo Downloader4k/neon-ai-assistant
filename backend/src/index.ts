@@ -49,10 +49,12 @@ app.use((req, _res, next) => {
 
 import knowledgeBaseRouter from './skills/knowledgeBase/routes';
 import { skillRoutes } from './api/skillRoutes';
+import { selfTestRoutes } from './api/selfTestRoutes';
 
 // API Routes
 app.use('/api/skills/knowledge-base', knowledgeBaseRouter);
 app.use('/api/skills', skillRoutes);
+app.use('/api/selftest', selfTestRoutes);
 app.use('/api', apiRoutes);
 
 // Serve frontend build (production)
