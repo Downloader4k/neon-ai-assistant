@@ -62,8 +62,8 @@ _archive/
 backup_*/
 frontend_backup_*/
 
-# Memory cache (runtime data)
-memory/
+# Memory cache (runtime data - root level only)
+/memory/
 
 # Uploads & vector data (user data)
 backend/data/uploads/

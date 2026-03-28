@@ -47,8 +47,11 @@ export class ExtractionService {
         // Merge and deduplicate
         const merged = this.mergeAndDeduplicate(ruleBasedResults, llmResults);
 
+        // Verify against actual conversation text (anti-hallucination)
+        const verified = this.verifyAgainstConversation(merged, conversation.messages);
+
         // Apply quality filter
-        const filtered = this.filterByQuality(merged);
+        const filtered = this.filterByQuality(verified);
 
         if (filtered.length > 0) {
             logger.info(`[Extraction] Extracted ${filtered.length} memories from ${conversation.id}`);
@@ -92,37 +95,51 @@ export class ExtractionService {
                 .join('\n');
 
             // ... prompt construction ...
-            const prompt = `Du bist ein Memory-Extraktor. Analysiere folgende Konversation und extrahiere NUR wirklich wichtige, dauerhafte Informationen.
+            const prompt = `Du bist ein strikter Memory-Extraktor. Extrahiere NUR Informationen, die der NUTZER (USER) EXPLIZIT und WÖRTLICH über SICH SELBST gesagt hat.
 
-WICHTIGE REGELN:
-1. Pro Konzept/Thema NUR EINEN Eintrag erstellen — KEINE Duplikate oder Variationen!
-2. Einmalige Erwähnungen (z.B. "heute esse ich X") sind KEINE dauerhaften Präferenzen.
-3. Nur explizite Aussagen wie "Ich mag immer X" oder "Merke dir X" als PREFERENCE/INSTRUCTION speichern.
-4. Maximal 3 Einträge pro Konversation. Qualität vor Quantität!
-5. Ignoriere: Small-Talk, Begrüßungen, temporäre Zustände, Wetter, aktuelle Tagesinfos.
+ABSOLUT VERBOTEN:
+- NIEMALS Informationen erfinden, die nicht WÖRTLICH in der Konversation stehen
+- NIEMALS Schlussfolgerungen ziehen oder Fakten kombinieren
+- NIEMALS Aussagen des ASSISTENTEN als Fakten über den Nutzer speichern
+- NIEMALS temporäre Situationen als dauerhafte Fakten speichern
+- NIEMALS Beziehungen zwischen Personen erfinden, die nicht explizit genannt wurden
+
+UNTERSCHEIDE STRIKT:
+1. "Fakten ÜBER den Nutzer" = Der Nutzer sagt "ICH bin/habe/mache X" → Speichern als FACT
+2. "Fakten die der Nutzer ERWÄHNT" = Der Nutzer spricht über andere Personen/Dinge → NUR speichern wenn es eine dauerhafte Beziehung des Nutzers ist
+3. "Temporäre Zustände" = "Meine Mutter ist beim Sport", "Ich esse gerade Pizza" → NIEMALS speichern
+4. "Dauerhafte Fakten" = "Ich heiße Max", "Mein Bruder heißt Tim", "Ich arbeite als Entwickler" → Speichern
+
+REGELN:
+1. NUR Aussagen des NUTZERS (USER:) analysieren, NICHT die des Assistenten
+2. Maximal 2 Einträge pro Konversation — nur das Wichtigste
+3. Confidence unter 0.8 → NICHT speichern
+4. Im Zweifel: NICHT speichern. Lieber eine Information verpassen als eine falsche speichern.
+5. Jeder extrahierte Fakt muss als DIREKTES ZITAT aus der Konversation nachweisbar sein
 
 Konversation:
 ${conversationText}
 
 Kategorien:
-- FACT: Dauerhafte Fakten über den Nutzer (Name, Beruf, Familie)
-- PREFERENCE: Klar ausgedrückte, wiederkehrende Vorlieben
-- PROJECT: Projekte an denen der Nutzer arbeitet
-- INSTRUCTION: Explizite Anweisungen ("Merke dir...", "Vergiss nicht...")
-- KNOWLEDGE: Wichtiges Fachwissen oder Personen
-- RELATIONSHIP: Dauerhafte Beziehungen (Familie, Freunde)
+- FACT: Dauerhafte, persönliche Fakten über den Nutzer (Name, Alter, Beruf, Wohnort)
+- PREFERENCE: Wiederholt und klar ausgedrückte Vorlieben ("Ich mag immer...", "Ich bevorzuge...")
+- PROJECT: Projekte an denen der Nutzer aktiv arbeitet ("Ich arbeite an...")
+- INSTRUCTION: Explizite Anweisungen an den Assistenten ("Merke dir...", "Vergiss nicht...")
+- RELATIONSHIP: Vom Nutzer explizit genannte dauerhafte Beziehungen ("Mein Bruder heißt...", "Meine Freundin ist...")
 
-Antwort als JSON-Array (maximal 3 Einträge):
+Antwort als JSON-Array (maximal 2 Einträge, oder leeres Array [] wenn nichts Wichtiges):
 [
   {
-    "type": "FACT|PREFERENCE|PROJECT|INSTRUCTION|KNOWLEDGE|RELATIONSHIP",
+    "type": "FACT|PREFERENCE|PROJECT|INSTRUCTION|RELATIONSHIP",
     "content": "Die extrahierte Information als kurzer Satz",
+    "source_quote": "Das wörtliche Zitat aus der USER-Nachricht das diese Information belegt",
     "importance": 0.0-1.0,
-    "tags": ["tag1", "tag2"],
+    "tags": ["tag1"],
     "confidence": 0.0-1.0
   }
 ]
 
+WICHTIG: Wenn keine dauerhaften, persönlichen Informationen vorhanden sind, gib ein leeres Array [] zurück.
 NUR das JSON-Array ausgeben, kein weiterer Text.`;
 
             // Add AbortController for timeout
@@ -184,17 +201,64 @@ NUR das JSON-Array ausgeben, kein weiterer Text.`;
 
             const parsed = JSON.parse(jsonMatch[0]);
 
-            // Validate and filter
+            // Validate and filter — require minimum confidence of 0.7
             return parsed.filter((item: any) =>
                 item.type &&
                 item.content &&
-                item.confidence >= 0.1 && // Allow lower confidence, filter later
-                ['FACT', 'PREFERENCE', 'PROJECT', 'INSTRUCTION', 'KNOWLEDGE', 'BEHAVIOR', 'RELATIONSHIP'].includes(item.type)
-            );
+                item.confidence >= 0.7 &&
+                ['FACT', 'PREFERENCE', 'PROJECT', 'INSTRUCTION', 'RELATIONSHIP'].includes(item.type)
+            ).map((item: any) => ({
+                ...item,
+                // Preserve source_quote for verification
+                sourceQuote: item.source_quote || ''
+            }));
         } catch (error) {
             console.error('[Extraction] Failed to parse LLM response:', error);
             return [];
         }
+    }
+
+    /**
+     * Verify extracted memories against actual conversation text.
+     * Rejects any memory whose content cannot be traced back to user messages.
+     */
+    private verifyAgainstConversation(
+        memories: ExtractedMemory[],
+        messages: Array<{ role: string; content: string }>
+    ): ExtractedMemory[] {
+        // Collect all user messages as one lowercase string for verification
+        const userText = messages
+            .filter(m => m.role === 'user')
+            .map(m => m.content.toLowerCase())
+            .join(' ');
+
+        return memories.filter(memory => {
+            // Extract key nouns/names from the memory content
+            const contentWords = memory.content
+                .toLowerCase()
+                .split(/\s+/)
+                .filter((w: string) => w.length > 3)
+                // Remove common German filler words
+                .filter((w: string) => !['nutzer', 'benutzer', 'user', 'dass', 'eine', 'einem', 'einen', 'einer', 'sind', 'wird', 'wurde', 'haben', 'hatte', 'macht', 'machen', 'heißt', 'arbeitet', 'bevorzugt', 'möchte'].includes(w));
+
+            // At least 50% of meaningful words must appear in user messages
+            const matchCount = contentWords.filter((w: string) => userText.includes(w)).length;
+            const matchRatio = contentWords.length > 0 ? matchCount / contentWords.length : 0;
+
+            // Also check source_quote if provided
+            const sourceQuote = (memory as any).sourceQuote || '';
+            const quoteFound = sourceQuote.length > 5 && userText.includes(sourceQuote.toLowerCase().trim());
+
+            const verified = matchRatio >= 0.5 || quoteFound;
+
+            if (!verified) {
+                logger.warn(`[Verification] REJECTED hallucinated memory: "${memory.content}" (matchRatio: ${matchRatio.toFixed(2)}, quoteFound: ${quoteFound})`);
+            } else {
+                logger.info(`[Verification] VERIFIED memory: "${memory.content}" (matchRatio: ${matchRatio.toFixed(2)})`);
+            }
+
+            return verified;
+        });
     }
 
     /**
@@ -226,30 +290,47 @@ NUR das JSON-Array ausgeben, kein weiterer Text.`;
         const trivialPatterns = [
             /^(hallo|hi|hey|tschüss|danke|bitte|ok|okay|ja|nein)$/i,
             /^(what|how|why|where|when)\??$/i,
-            /^.{1,9}$/,  // Too short (< 10 chars)
+            /^.{1,14}$/,  // Too short (< 15 chars)
         ];
 
-        // Patterns to filter out ephemeral weather data
+        // Patterns to filter out ephemeral/weather/temporal data
         const ephemeralPatterns = [
-            /(wetter|temperatur|grad|bewölkt|sonnig|regen|schnee|wind|vorhersage).*in/i, // "Wetter in..."
-            /(aktuell|heute|morgen|jetzt).*ist es/i, // "Heute ist es..."
+            /(wetter|temperatur|grad|bewölkt|sonnig|regen|schnee|wind|vorhersage).*in/i,
+            /(aktuell|heute|morgen|jetzt|gerade|momentan).*ist/i,
             /grad celsius/i,
-            /topolino/i, // Safety filter for the hallucination
+            /topolino/i,
+        ];
+
+        // Patterns for temporary situations — these should NEVER be stored
+        const temporalPatterns = [
+            /(?:ist|sind|war|waren)\s+(?:gerade|momentan|aktuell|jetzt|heute|beim|im)\s/i,
+            /(?:gerade|momentan|aktuell|jetzt)\s+(?:beim|im|am|bei)\s/i,
+            /(?:beim|im)\s+(?:sport|einkaufen|kochen|arbeiten|training|fitness|arzt|schule)/i,
+            /(?:wenn|sobald|falls)\s+.+(?:zurück|fertig|da ist|kommt)/i,
+            /(?:heute|morgen|gestern|gleich|später|nachher)\s+(?:essen|machen|gehen|kommen)/i,
+            /(?:warte|wartet)\s+(?:auf|bis)/i,
+            /(?:ist\s+(?:nicht\s+)?(?:da|hier|weg|unterwegs))/i,
+        ];
+
+        // Patterns that indicate the memory is about someone else, not the user
+        const thirdPartyPatterns = [
+            /^(?:der|die|das)\s+(?:nutzer|user)\s+(?:hat\s+)?(?:erwähnt|gesagt|geschrieben|berichtet)/i,
+            /(?:ist\s+der\s+sohn|ist\s+die\s+tochter|ist\s+der\s+vater|ist\s+die\s+mutter)\s+von/i,
         ];
 
         return memories.filter(memory => {
             const content = memory.content.trim();
 
             // Check minimum length
-            if (content.length < 10) {
-                console.log(`[Quality Filter] Rejected (too short): "${content}"`);
+            if (content.length < 15) {
+                logger.info(`[Quality Filter] Rejected (too short): "${content}"`);
                 return false;
             }
 
             // Check trivial patterns
             for (const pattern of trivialPatterns) {
                 if (pattern.test(content)) {
-                    console.log(`[Quality Filter] Rejected (trivial): "${content}"`);
+                    logger.info(`[Quality Filter] Rejected (trivial): "${content}"`);
                     return false;
                 }
             }
@@ -257,46 +338,59 @@ NUR das JSON-Array ausgeben, kein weiterer Text.`;
             // Check ephemeral/weather patterns
             for (const pattern of ephemeralPatterns) {
                 if (pattern.test(content)) {
-                    console.log(`[Quality Filter] Rejected (ephemeral/weather): "${content}"`);
+                    logger.info(`[Quality Filter] Rejected (ephemeral): "${content}"`);
                     return false;
                 }
             }
 
-            // Check importance threshold (Dynamic Scoring)
-            let minImportance = 0.3; // Default
+            // Check temporal situation patterns
+            for (const pattern of temporalPatterns) {
+                if (pattern.test(content)) {
+                    logger.info(`[Quality Filter] Rejected (temporal situation): "${content}"`);
+                    return false;
+                }
+            }
 
-            // Refined thresholds based on type
+            // Check third-party inference patterns (e.g. "X ist der Sohn von Y")
+            for (const pattern of thirdPartyPatterns) {
+                if (pattern.test(content)) {
+                    logger.info(`[Quality Filter] Rejected (third-party inference): "${content}"`);
+                    return false;
+                }
+            }
+
+            // Higher importance thresholds
+            let minImportance = 0.6;
+
             switch (memory.type) {
                 case 'FACT':
-                    minImportance = 0.6; // Only store significant facts
-                    break;
-                case 'BEHAVIOR':
-                    minImportance = 0.5; // Require clear behavioral patterns
+                    minImportance = 0.7;
                     break;
                 case 'RELATIONSHIP':
-                    minImportance = 0.5;
+                    minImportance = 0.7;
                     break;
                 case 'PREFERENCE':
-                    minImportance = 0.6; // Preferences need clear evidence
+                    minImportance = 0.7;
                     break;
                 case 'INSTRUCTION':
-                    minImportance = 0.6; // Instructions should be important
+                    minImportance = 0.7;
+                    break;
+                case 'PROJECT':
+                    minImportance = 0.6;
                     break;
                 default:
-                    minImportance = 0.5;
+                    minImportance = 0.7;
             }
 
             if (memory.importance < minImportance) {
-                console.log(`[Quality Filter] Rejected ${memory.type} (score ${memory.importance} < ${minImportance}): "${content}"`);
+                logger.info(`[Quality Filter] Rejected ${memory.type} (score ${memory.importance} < ${minImportance}): "${content}"`);
                 return false;
             }
 
-            // Adjust importance based on confidence (if confidence is low, require higher importance)
-            if (memory.confidence < 0.6) {
-                if (memory.importance < (minImportance + 0.2)) {
-                    console.log(`[Quality Filter] Rejected low confidence ${memory.type} (conf ${memory.confidence}): "${content}"`);
-                    return false;
-                }
+            // Require high confidence for all types
+            if (memory.confidence < 0.7) {
+                logger.info(`[Quality Filter] Rejected low confidence ${memory.type} (conf ${memory.confidence}): "${content}"`);
+                return false;
             }
 
             return true;

@@ -30,261 +30,36 @@ export class MemoryManagerService {
         longTerm: 2000
     };
     
-    // Neuer Cache für kritische Informationen
-    private criticalInfoCache: Map<string, any> = new Map();
-    
-    // Kritische persoenliche Daten werden aus der Datenbank geladen, nicht hardcodiert
-    private CRITICAL_PERSONAL_DATA: Array<{
-        type: string;
-        keywords: string[];
-        content: string;
-        summary: string;
-        variations?: string[];
-    }> = [];
-    
     constructor() {
-        // Lade kritische Informationen beim Start
-        this.initializeCriticalInfo();
-    }
-    
-    /**
-     * Lade kritische Informationen in den Cache und erstelle persistente Einträge
-     */
-    private async initializeCriticalInfo() {
-        try {
-            logger.info('🔍 [MemoryManager] Initialisiere kritische Personendaten...');
-            
-            // Durchlaufe alle vordefinierten kritischen Daten
-            for (const criticalData of this.CRITICAL_PERSONAL_DATA) {
-                // Suche nach vorhandenen Einträgen zu diesem Thema
-                const existingEntries = await prisma.memoryEntry.findMany({
-                    where: {
-                        OR: criticalData.keywords.map(kw => ({
-                            content: { contains: kw }
-                        })),
-                        isActive: true
-                    }
-                });
-                
-                // Prüfe ob Einträge tatsächlich die relevanten Informationen enthalten
-                const validEntries = existingEntries.filter(entry => {
-                    // Bei Geburtsdatum überprüfen wir, ob das Datum enthalten ist
-                    if (criticalData.type === "BIRTHDAY") {
-                        return criticalData.variations?.some(variant => entry.content.includes(variant));
-                    }
-                    // Bei anderen Typen prüfen wir, ob Keywords enthalten sind
-                    return criticalData.keywords.some(kw => entry.content.toLowerCase().includes(kw));
-                });
-                
-                if (validEntries.length === 0) {
-                    logger.warn(`⚠️ [MemoryManager] Keine ${criticalData.type}-Einträge gefunden! Erstelle standardisierten Eintrag`);
-                    
-                    // Erstelle Eintrag für alle User-IDs (aktuell nur default-user)
-                    const userIds = ["default-user"]; // Später: Liste aktiver User aus DB
-                    
-                    for (const userId of userIds) {
-                        try {
-                            // Erstelle speziell optimierten Content mit extra Keyword-Markierungen
-                            const enhancedContent = `${criticalData.content} [WICHTIGE PERSÖNLICHE INFORMATION] [${criticalData.type}] [HOHE PRIORITÄT]`;
-                            
-                            // Erstelle einen persistenten Memory-Eintrag mit allen relevanten Metadaten
-                            const entry = await prisma.memoryEntry.create({
-                                data: {
-                                    userId,
-                                    type: "CRITICAL_FACT", // Spezialtyp für kritische Informationen
-                                    content: enhancedContent,
-                                    summary: criticalData.summary,
-                                    importanceScore: 1.0, // Maximale Wichtigkeit
-                                    accessCount: 999,   // Höchste Priorität für Retrieval
-                                    isActive: true,
-                                    tags: { 
-                                        create: [
-                                            { name: "CRITICAL" },
-                                            { name: criticalData.type },
-                                            { name: "PERSONAL" }
-                                        ]
-                                    }
-                                }
-                            });
-                            
-                            logger.info(`✅ [MemoryManager] ${criticalData.type}-Eintrag erstellt: ${entry.id}`);
-                            
-                            // Generiere und speichere optimiertes Embedding
-                            try {
-                                // Für bessere Auffindbarkeit erzeugen wir ein optimiertes Embedding
-                                // mit mehrfacher Wiederholung der kritischen Wörter
-                                const optimizedEmbeddingText = [
-                                    enhancedContent,
-                                    ...criticalData.keywords,
-                                    ...(criticalData.variations || []),
-                                    criticalData.type,
-                                    "WICHTIG WICHTIG WICHTIG",
-                                    criticalData.summary
-                                ].join(" ");
-                                
-                                const embedding = await embeddingService.embed(optimizedEmbeddingText);
-                                await embeddingService.storeEmbedding(entry.id, embedding);
-                                
-                                // Speichere Embedding-Referenz in Prisma
-                                await prisma.memoryEmbedding.create({
-                                    data: {
-                                        memoryEntryId: entry.id,
-                                        vector: JSON.stringify(embedding),
-                                        modelName: 'nomic-embed-text'
-                                    }
-                                });
-                                
-                                logger.info(`✅ [MemoryManager] Optimiertes Embedding für ${criticalData.type}-Eintrag erstellt`);
-                                
-                                // Cache den Eintrag für schnellen Zugriff
-                                this.criticalInfoCache.set(`${criticalData.type.toLowerCase()}:${userId}`, {
-                                    id: entry.id,
-                                    content: enhancedContent,
-                                    type: criticalData.type,
-                                    keywords: criticalData.keywords,
-                                    variations: criticalData.variations
-                                });
-                                
-                            } catch (embError) {
-                                logger.error(`[MemoryManager] Fehler beim Erstellen des Embeddings für ${criticalData.type}:`, embError);
-                            }
-                        } catch (createError) {
-                            logger.error(`[MemoryManager] Fehler beim Erstellen des ${criticalData.type}-Eintrags:`, createError);
-                        }
-                    }
-                } else {
-                    logger.info(`✅ [MemoryManager] ${validEntries.length} gültige ${criticalData.type}-Einträge gefunden`);
-                    
-                    // Optimiere vorhandene Einträge für bessere Auffindbarkeit
-                    for (const entry of validEntries) {
-                        try {
-                            // Aktualisiere Wichtigkeit und Tags
-                            await prisma.memoryEntry.update({
-                                where: { id: entry.id },
-                                data: {
-                                    importanceScore: 1.0,
-                                    accessCount: entry.accessCount + 100, // Erhöhe Counter für höhere Priorität
-                                    tags: {
-                                        connectOrCreate: [
-                                            { where: { name: "CRITICAL" }, create: { name: "CRITICAL" } },
-                                            { where: { name: criticalData.type }, create: { name: criticalData.type } },
-                                            { where: { name: "PERSONAL" }, create: { name: "PERSONAL" } }
-                                        ]
-                                    }
-                                }
-                            });
-                            
-                            // Verbessere Embedding mit optimierten Keywords
-                            const optimizedEmbeddingText = [
-                                entry.content,
-                                ...criticalData.keywords,
-                                ...(criticalData.variations || []),
-                                criticalData.type,
-                                "WICHTIG WICHTIG WICHTIG",
-                                entry.summary || criticalData.summary
-                            ].join(" ");
-                            
-                            const newEmbedding = await embeddingService.embed(optimizedEmbeddingText);
-                            await embeddingService.storeEmbedding(entry.id, newEmbedding);
-                            
-                            logger.info(`✅ [MemoryManager] ${criticalData.type}-Eintrag optimiert: ${entry.id}`);
-                            
-                            // Cache den Eintrag
-                            this.criticalInfoCache.set(`${criticalData.type.toLowerCase()}:${entry.userId}`, {
-                                id: entry.id,
-                                content: entry.content,
-                                type: criticalData.type,
-                                keywords: criticalData.keywords,
-                                variations: criticalData.variations
-                            });
-                        } catch (updateError) {
-                            logger.error(`[MemoryManager] Fehler beim Optimieren des ${criticalData.type}-Eintrags:`, updateError);
-                        }
-                    }
-                }
-            }
-        } catch (error) {
-            logger.error('[MemoryManager] Fehler beim Initialisieren kritischer Info:', error);
-        }
+        logger.info('[MemoryManager] Initialized');
     }
 
     /**
-     * Get relevant context for user message
+     * Detect if a query is about personal information (triggers broader memory search)
      */
-    /**
-     * Erkennt und klassifiziert kritische Abfragen
-     * @param userMessage Die Nachricht des Benutzers
-     * @returns Ein Objekt mit erkannten kritischen Themen
-     */
-    private detectCriticalQuery(userMessage: string): {
-        type: string | null;
+    private detectPersonalQuery(userMessage: string): {
         isPersonalQuery: boolean;
-        isFactQuery: boolean;
-        enhancedQuery: string;
-        detectedEntities: string[];
     } {
-        const result = {
-            type: null as string | null,
-            isPersonalQuery: false,
-            isFactQuery: false,
-            enhancedQuery: userMessage,
-            detectedEntities: [] as string[]
-        };
-        
-        // Normalisiere Text für bessere Erkennung
         const normalizedQuery = userMessage.toLowerCase().trim();
-        
-        // 1. Persönliche Geburtsdaten-Erkennung (höchste Priorität)
-        if (normalizedQuery.match(/wie alt|alter|geboren|geburtstag|geburt|wann.*geboren|geburtsdatum|birthday|birthday|birth date|date of birth/i)) {
-            result.type = "BIRTHDAY";
-            result.isPersonalQuery = true;
-            result.isFactQuery = true;
-            result.detectedEntities.push("GEBURTSTAG");
-            
-            // Extrahiere mögliche Personen-Entitäten
-            const nameMatch = normalizedQuery.match(/(?:wann wurde|wie alt ist|wann ist) ([\w\s]+?) (?:geboren|alt)/i);
-            if (nameMatch && nameMatch[1]) {
-                result.detectedEntities.push(nameMatch[1].trim());
-            }
-            
-            // Stark verbesserter Query mit Variationen und Wiederholungen
-            result.enhancedQuery = `${userMessage} 
-                Geburtsdatum Geburtstag Alter geboren
-                "geboren am" wichtig persoenliche Information
-                KRITISCHE ABFRAGE GEBURTSTAG BIRTHDAY`;
-            
-            logger.info(`🎯 [MemoryManager] CRITICAL QUERY: Geburtstagsabfrage erkannt: "${userMessage}"`);
+
+        const personalPatterns = [
+            /was weißt du über mich/i,
+            /was weisst du über mich/i,
+            /wer bin ich/i,
+            /kennst du mich/i,
+            /was hast du.*über mich.*gespeichert/i,
+            /meine? (?:daten|infos|informationen|profil)/i,
+            /wie alt|geburtstag|geboren/i,
+            /(?:ueber|about) mich/i,
+        ];
+
+        const isPersonalQuery = personalPatterns.some(p => p.test(normalizedQuery));
+
+        if (isPersonalQuery) {
+            logger.info(`[MemoryManager] Personal query detected: "${userMessage}"`);
         }
-        
-        // 2. Allgemeine biografische Abfragen
-        else if (normalizedQuery.match(/wer (?:ist|bist)|(?:ueber|about) (?:dich|mich)|profil|bio(?:graf|graph)(?:ie|y)|person|background/i)) {
-            result.type = "BIO";
-            result.isPersonalQuery = true;
-            result.isFactQuery = true;
-            result.detectedEntities.push("BIOGRAFIE");
-            
-            result.enhancedQuery = `${userMessage} 
-                Biografie Person Profil "wer ist"
-                persoenliche Informationen wichtig BIOGRAFISCHE DATEN`;
-                
-            logger.info(`🎯 [MemoryManager] CRITICAL QUERY: Biografieabfrage erkannt: "${userMessage}"`);
-        }
-        
-        // 3. Faktenwissen-Abfragen (z.B. Daten, Zahlen)
-        else if (normalizedQuery.match(/(?:wann|wie viel|wie viele|wie lange|wieviel|was|welche) (?:ist|sind|war|waren|hat|haben)/i)) {
-            result.isFactQuery = true;
-            result.detectedEntities.push("FAKTENWISSEN");
-            
-            // Extrahiere mögliche Themenentitäten
-            const topicMatch = normalizedQuery.match(/(?:wann|wie viel|wie viele|was|welche) (?:ist|sind|war|waren) ([\w\s]+)/i);
-            if (topicMatch && topicMatch[1]) {
-                result.detectedEntities.push(topicMatch[1].trim());
-            }
-            
-            logger.info(`🔍 [MemoryManager] Faktenwissen-Abfrage erkannt: "${userMessage}"`);
-        }
-        
-        return result;
+
+        return { isPersonalQuery };
     }
 
     async getRelevantContext(
@@ -293,146 +68,34 @@ export class MemoryManagerService {
         userMessage: string
     ): Promise<MemoryContext> {
         logger.info(`[MemoryManager] Getting context for user: ${userId}, message: ${userMessage.substring(0, 50)}...`);
-        
-        // 1. Erkenne kritische Abfragetypen für optimierte Suche
-        const queryAnalysis = this.detectCriticalQuery(userMessage);
-        
-        // 1. Working Memory (always include - current conversation)
+
+        const { isPersonalQuery } = this.detectPersonalQuery(userMessage);
+
+        // 1. Working Memory (current conversation)
         const working = workingMemoryService.getHistory(sessionId);
 
         // 2. Short-Term Memory (recent conversations)
         const shortTermResults = await shortTermMemoryService.searchRecent(
             userId,
             userMessage,
-            queryAnalysis.isPersonalQuery ? 5 : 3  // Bei persönlichen Abfragen mehr Short-Term-Ergebnisse
+            isPersonalQuery ? 5 : 3
         );
         const shortTermContext = this.buildShortTermContext(shortTermResults);
 
-        // MEMORY SEARCH mit intelligenter Abfrageverbesserung
-        let memorySearchQuery = queryAnalysis.isPersonalQuery ? queryAnalysis.enhancedQuery : userMessage;
-        
-        // Log-Ausgabe bei kritischen Abfragen
-        if (queryAnalysis.type) {
-            logger.info(`🧠 [MemoryManager] KRITISCHE ABFRAGE: Typ=${queryAnalysis.type}, Entitäten=[${queryAnalysis.detectedEntities.join(', ')}]`);
-            logger.info(`🧠 [MemoryManager] Verbesserter Memory Query: "${memorySearchQuery.substring(0, 100)}..."`);
-        }
-
         // 3. Long-Term Memory (semantic search via embeddings)
-        // Bei kritischen Abfragen passen wir die Suchparameter an
-        let longTermResults;
-        
-        if (queryAnalysis.type === "BIRTHDAY" || queryAnalysis.type === "BIO") {
-            // Für Geburtstags- und Bio-Abfragen verwenden wir aggressive Parameter
-            longTermResults = await this.searchLongTerm(
-                memorySearchQuery, 
-                20,      // Viele Ergebnisse
-                0.3,     // Sehr niedriger Schwellwert - wir wollen keine Geburtstagsdaten verpassen
-                true     // Aktiviere Boosting für kritische Tags
-            );
-            
-            logger.info(`🔎 [MemoryManager] KRITISCHE SUCHE mit aggressiven Parametern für ${queryAnalysis.type}`);
-        } 
-        else if (queryAnalysis.isFactQuery) {
-            // Für Faktenabfragen verwenden wir eine Balance
-            longTermResults = await this.searchLongTerm(
-                memorySearchQuery, 
-                15,    // Mehr Ergebnisse für Fakten
-                0.35,  // Niedrigerer Schwellwert für besseren Recall
-                false  // Kein Tag-Boosting
-            );
-        }
-        else {
-            // Standard für normale Abfragen
-            longTermResults = await this.searchLongTerm(
-                memorySearchQuery, 
-                10,     // Standardanzahl
-                0.4,    // Standardschwellwert
-                false   // Kein Tag-Boosting
-            );
-        }
-            
+        const longTermResults = await this.searchLongTerm(
+            userMessage,
+            isPersonalQuery ? 15 : 10,
+            isPersonalQuery ? 0.35 : 0.4,
+            false
+        );
+
         const longTermContext = this.buildLongTermContext(longTermResults);
 
-        logger.info(`[MemoryManager] Retrieved ${longTermResults.length} long-term memories. LTM Context length: ${longTermContext.length}`);
-        
-        // Detailliertes Logging der gefundenen Erinnerungen
+        logger.info(`[MemoryManager] Retrieved ${longTermResults.length} long-term memories`);
         longTermResults.forEach((memory, idx) => {
-            const tags = memory.tags ? memory.tags.map((t:any) => t.name).join(',') : '';
-            logger.info(`[MemoryManager] Memory ${idx+1}: ${memory.type} [${tags}] (${memory.similarity?.toFixed(4) || '?'}) - ${memory.content.substring(0, 80)}...`);
+            logger.debug(`[MemoryManager] Memory ${idx + 1}: ${memory.type} (${memory.similarity?.toFixed(4) || '?'}) - ${memory.content.substring(0, 80)}`);
         });
-        
-        // VALIDIERUNG DER ERGEBNISSE: Prüfen, ob wir kritische Informationen gefunden haben
-        if (queryAnalysis.type) {
-            // Spezifische Validierungslogik je nach Abfragetyp
-            if (queryAnalysis.type === "BIRTHDAY") {
-                // Verbesserte Erkennungslogik mit mehr Varianten
-                // Geburtsdatum-Patterns werden dynamisch aus dem Memory geladen
-                const birthDatePatterns = ['geboren', 'geburtstag', 'birthday', 'geburtsdatum'];
-                
-                const hasBirthDate = birthDatePatterns.some(pattern => 
-                    longTermContext.includes(pattern) || 
-                    longTermResults.some(mem => mem.content.includes(pattern))
-                );
-                
-                if (hasBirthDate) {
-                    logger.info('✅ [MemoryManager] CRITICAL SUCCESS: Birth date found in LTM context!');
-                } else {
-                    logger.warn('⚠️ [MemoryManager] CRITICAL FAILURE: Birth date MISSING from LTM context!');
-                    
-                    // NOTLÖSUNG: Wenn wichtige Daten fehlen, füge Hardcoded-Fakten hinzu
-                    logger.info('🔄 [MemoryManager] Emergency injection of critical birthday data');
-                    
-                    // Prüfe zuerst, ob wir die Information im Cache haben
-                    const cachedInfo = this.criticalInfoCache.get('birthday:default-user');
-                    
-                    let birthdayMemory;
-                    if (cachedInfo) {
-                        birthdayMemory = {
-                            id: cachedInfo.id,
-                            userId: userId,
-                            type: "CRITICAL_FACT",
-                            content: cachedInfo.content,
-                            summary: "Geburtsdatum aus dem Gedaechtnis.",
-                            importanceScore: 1.0,
-                            accessCount: 999,
-                            createdAt: new Date(),
-                            updatedAt: new Date(),
-                            isActive: true,
-                            similarity: 1.0,
-                            tags: [{ name: "BIRTHDAY" }, { name: "CRITICAL" }]
-                        };
-                    } else {
-                        // Fallback: Kein hardcodiertes Geburtsdatum - aus DB laden
-                        birthdayMemory = {
-                            id: "synthetic-birthday-entry",
-                            userId: userId,
-                            type: "CRITICAL_FACT",
-                            content: "[KRITISCHE INFORMATION] Geburtsdatum nicht im Gedaechtnis gefunden. Bitte den Nutzer fragen.",
-                            summary: "Geburtsdatum unbekannt.",
-                            importanceScore: 1.0,
-                            accessCount: 999,
-                            createdAt: new Date(),
-                            updatedAt: new Date(),
-                            isActive: true,
-                            similarity: 1.0,
-                            tags: [{ name: "BIRTHDAY" }, { name: "CRITICAL" }]
-                        };
-                    }
-                    
-                    // Füge es zu den Ergebnissen hinzu (an erster Stelle für höchste Priorität)
-                    longTermResults.unshift(birthdayMemory as any);
-                    
-                    // Baue den Kontext neu auf mit dem hinzugefügten Memory
-                    const updatedLongTermContext = this.buildLongTermContext(longTermResults);
-                    return {
-                        workingMemory: working,
-                        shortTermContext,
-                        longTermContext: updatedLongTermContext, 
-                        totalTokens: this.estimateTokens(working, shortTermContext, updatedLongTermContext)
-                    };
-                }
-            }
-        }
 
         return {
             workingMemory: working,
@@ -443,104 +106,36 @@ export class MemoryManagerService {
     }
 
     /**
-     * Search long-term memory using semantic similarity with advanced filtering
-     * @param query The search query
-     * @param limit Maximum number of results to return
-     * @param threshold Optional similarity threshold (default: 0.4)
-     * @param boostCriticalTags Whether to boost results with critical tags
+     * Search long-term memory using semantic similarity
      */
-    private async searchLongTerm(query: string, limit: number = 5, threshold: number = 0.4, boostCriticalTags = false) {
+    private async searchLongTerm(query: string, limit: number = 10, threshold: number = 0.4, _boostCriticalTags = false) {
         try {
-            // Use embedding service for semantic search with configurable threshold
-            const vectorResults = await embeddingService.searchSimilar(query, limit * 2, threshold); // Holen wir doppelt so viele für Post-Processing
-            
-            // Fetch full memory entries with tags
+            const vectorResults = await embeddingService.searchSimilar(query, limit, threshold);
+
+            // Fetch full memory entries
             const memories = await Promise.all(
                 vectorResults.map(async (result) => {
                     const entry = await prisma.memoryEntry.findUnique({
                         where: { id: result.id },
                         include: { tags: true }
                     });
-                    
-                    if (entry) {
-                        // Berechne angepassten Similarity-Score basierend auf Metadaten
-                        let adjustedSimilarity = result.similarity;
-                        
-                        // Boost für kritische Tags wenn aktiviert
-                        if (boostCriticalTags) {
-                            const hasCriticalTag = entry.tags?.some((tag: any) => 
-                                ["CRITICAL", "BIRTHDAY", "BIO", "PERSONAL"].includes(tag.name)
-                            );
-                            
-                            if (hasCriticalTag) {
-                                // Boost von 25% für kritische Tags
-                                adjustedSimilarity = Math.min(1.0, adjustedSimilarity * 1.25);
-                                logger.info(`🔼 [MemoryManager] Boosted critical memory: ${entry.id} (${result.similarity.toFixed(4)} → ${adjustedSimilarity.toFixed(4)})`);
-                            }
-                        }
-                        
-                        // Boost basierend auf importanceScore
-                        if (entry.importanceScore > 0.7) {
-                            const importanceBoost = entry.importanceScore * 0.15; // Max 15% Boost bei Score 1.0
-                            adjustedSimilarity = Math.min(1.0, adjustedSimilarity * (1 + importanceBoost));
-                        }
-                        
-                        // Boost basierend auf accessCount (häufiger abgerufene Memories sind wichtiger)
-                        if (entry.accessCount > 5) {
-                            const accessBoost = Math.min(0.1, entry.accessCount * 0.01); // Max 10% Boost
-                            adjustedSimilarity = Math.min(1.0, adjustedSimilarity * (1 + accessBoost));
-                        }
-                        
-                        logger.debug(`[MemoryManager] Match: ID=${entry.id}, Sim=${adjustedSimilarity.toFixed(4)}, Text="${entry.content.substring(0, 30)}..."`);
-                        return { ...entry, similarity: adjustedSimilarity };
-                    } else {
-                        logger.warn(`[MemoryManager] Mismatch: ID=${result.id} not found in Prisma!`);
-                        return null;
+
+                    if (entry && entry.isActive) {
+                        return { ...entry, similarity: result.similarity };
                     }
+                    return null;
                 })
             );
 
-            // Filtere leere Einträge und sortiere nach angepasstem Score
             const filtered = memories
                 .filter(m => m !== null)
-                .sort((a, b) => (b?.similarity || 0) - (a?.similarity || 0))
-                .slice(0, limit); // Schneide auf das ursprünglich angeforderte Limit
-            
-            // Inkrementiere accessCount für gefundene Memories
-            this.incrementAccessCountForMemories(filtered.map(m => m?.id).filter(Boolean) as string[]);
-            
-            logger.info(`[MemoryManager] Total active memories retrieved: ${filtered.length} (from ${vectorResults.length} vector results)`);
+                .sort((a, b) => (b?.similarity || 0) - (a?.similarity || 0));
+
+            logger.info(`[MemoryManager] Retrieved ${filtered.length} memories (from ${vectorResults.length} vector results)`);
             return filtered;
         } catch (error) {
-            console.error('[MemoryManager] Long-term search failed:', error);
+            logger.error('[MemoryManager] Long-term search failed:', error);
             return [];
-        }
-    }
-    
-    /**
-     * Inkrementiert den Zugriffszähler für Memories
-     * Wird asynchron aufgerufen und wartet nicht auf Abschluss
-     */
-    private async incrementAccessCountForMemories(memoryIds: string[]) {
-        if (!memoryIds.length) return;
-        
-        try {
-            // Batch-Update aller Memories in einem Durchlauf
-            await Promise.all(memoryIds.map(id => 
-                prisma.memoryEntry.update({
-                    where: { id },
-                    data: {
-                        accessCount: {
-                            increment: 1
-                        },
-                        updatedAt: new Date()
-                    }
-                })
-            ));
-            
-            logger.debug(`[MemoryManager] Incremented access count for ${memoryIds.length} memories`);
-        } catch (error) {
-            logger.error('[MemoryManager] Failed to increment access counts:', error);
         }
     }
 
@@ -577,96 +172,23 @@ export class MemoryManagerService {
 
         const chunks: string[] = [];
         let tokens = 0;
-        
-        // Gruppiere Memories nach Typ für bessere Organisation
-        const groupedMemories: {[key: string]: any[]} = {};
-        
-        // Sortiere zuerst nach Priorität
-        const sortedMemories = [...memories].sort((a, b) => {
-            // Kritische Fakten zuerst
-            if (a.type === "CRITICAL_FACT" && b.type !== "CRITICAL_FACT") return -1;
-            if (b.type === "CRITICAL_FACT" && a.type !== "CRITICAL_FACT") return 1;
-            
-            // Dann nach Similarity
-            return (b.similarity || 0) - (a.similarity || 0);
-        });
-        
-        // Gruppiere nach Typ
-        for (const memory of sortedMemories) {
-            const type = memory.type || "UNKNOWN";
-            if (!groupedMemories[type]) {
-                groupedMemories[type] = [];
-            }
-            groupedMemories[type].push(memory);
-        }
-        
-        // Verarbeite zuerst kritische Fakten (wenn vorhanden)
-        if (groupedMemories["CRITICAL_FACT"]) {
-            chunks.push("\n📌 WICHTIGE PERSÖNLICHE INFORMATIONEN:");
-            
-            for (const memory of groupedMemories["CRITICAL_FACT"]) {
-                const text = memory.summary || memory.content;
-                // Entferne Metadaten-Tags aus dem Text für sauberere Ausgabe
-                const cleanedText = text
-                    .replace(/\[WICHTIGE PERSÖNLICHE INFORMATION\]/g, '')
-                    .replace(/\[KRITISCHE INFORMATION\]/g, '')
-                    .replace(/\[WICHTIGES GEBURTSDATUM\]/g, '')
-                    .replace(/\[HOHE PRIORITÄT\]/g, '')
-                    .replace(/\[BIRTHDAY\]/g, '')
-                    .replace(/\[BIO\]/g, '')
-                    .trim();
-                    
-                const chunk = `- ${cleanedText}`;
-                const chunkTokens = this.estimateText(chunk);
 
-                if (tokens + chunkTokens > this.TOKEN_BUDGET.longTerm) break;
+        // Sort by similarity score
+        const sorted = [...memories].sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
 
-                chunks.push(chunk);
-                tokens += chunkTokens;
-            }
-            
-            // Entferne aus der Map, damit diese nicht doppelt verarbeitet werden
-            delete groupedMemories["CRITICAL_FACT"];
-        }
-        
-        // Verarbeite dann normale Fakten
-        if (groupedMemories["FACT"]) {
-            chunks.push("\n📚 FAKTENWISSEN:");
-            
-            for (const memory of groupedMemories["FACT"]) {
-                const text = memory.summary || memory.content;
-                const chunk = `- ${text}`;
-                const chunkTokens = this.estimateText(chunk);
+        for (const memory of sorted) {
+            const text = memory.content;
+            const chunk = `- [${memory.type}] ${text}`;
+            const chunkTokens = this.estimateText(chunk);
 
-                if (tokens + chunkTokens > this.TOKEN_BUDGET.longTerm) break;
+            if (tokens + chunkTokens > this.TOKEN_BUDGET.longTerm) break;
 
-                chunks.push(chunk);
-                tokens += chunkTokens;
-            }
-            
-            delete groupedMemories["FACT"];
-        }
-        
-        // Verarbeite alle anderen Typen
-        for (const [type, typeMemories] of Object.entries(groupedMemories)) {
-            if (typeMemories.length === 0) continue;
-            
-            chunks.push(`\n💡 ${type.replace(/_/g, ' ')}:`);
-            
-            for (const memory of typeMemories) {
-                const text = memory.summary || memory.content;
-                const chunk = `- ${text}`;
-                const chunkTokens = this.estimateText(chunk);
-
-                if (tokens + chunkTokens > this.TOKEN_BUDGET.longTerm) break;
-
-                chunks.push(chunk);
-                tokens += chunkTokens;
-            }
+            chunks.push(chunk);
+            tokens += chunkTokens;
         }
 
         return chunks.length > 0
-            ? `GESPEICHERTE ERINNERUNGEN:${chunks.join('\n')}`
+            ? `Gespeicherte Erinnerungen ueber den Nutzer:\n${chunks.join('\n')}`
             : '';
     }
 
