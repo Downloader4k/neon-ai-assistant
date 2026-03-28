@@ -282,10 +282,23 @@ export function initializeWebSocket(httpServer: HTTPServer): SocketIOServer {
                     });
 
                     // Get relevant context from all memory layers
+                    // For short follow-up messages, enrich query with recent conversation history
+                    let memorySearchMessage = message;
+                    const words = message.trim().split(/\s+/).filter((w: string) => w.length > 2);
+                    const isShortFollowUp = words.length <= 6;
+                    if (isShortFollowUp && history.length > 0) {
+                        // Use the last few messages as additional search context
+                        const recentContext = history.slice(-4)
+                            .map((h: any) => h.content)
+                            .join(' ');
+                        memorySearchMessage = `${message} ${recentContext}`;
+                        logger.info(`[Memory] Short follow-up detected, enriched query with history context`);
+                    }
+
                     const memoryContext = await memoryManagerService.getRelevantContext(
                         socket.id,
                         userId,
-                        message
+                        memorySearchMessage
                     );
 
                     // Build context chunks for prompt
