@@ -12,9 +12,8 @@ interface Attachment {
 }
 
 export default function WelcomeScreen({ onStartChat }: { onStartChat: (msg?: string, attachments?: Attachment[]) => void }) {
-  const users = useAppStore((s) => s.users);
-  const currentUserId = useAppStore((s) => s.currentUserId);
-  const userName = users.find(u => u.id === currentUserId)?.name || 'User';
+  const currentUser = useAppStore((s) => s.currentUser);
+  const userName = currentUser?.name || 'User';
   const [inputValue, setInputValue] = useState('');
   const [greetingSubtext, setGreetingSubtext] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);

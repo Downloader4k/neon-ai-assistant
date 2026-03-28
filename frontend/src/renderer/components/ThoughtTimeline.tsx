@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Clock, MessageSquare, Brain, BookOpen, Gift, Sparkles, ChevronDown } from 'lucide-react';
+import { useAppStore } from '../store/useAppStore';
 
 interface TimelineEntry {
   id: string;
@@ -46,7 +47,8 @@ export default function ThoughtTimeline() {
       }
 
       // Fetch memories
-      const memRes = await fetch('/api/memory/default-user');
+      const activeUserId = useAppStore.getState().currentUser?.id || 'default-user';
+      const memRes = await fetch(`/api/memory/${activeUserId}`);
       if (memRes.ok) {
         const mems = await memRes.json();
         mems.forEach((m: any) => {

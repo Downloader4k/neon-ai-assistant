@@ -49,7 +49,7 @@ export const PERSONALITY_LIST: PersonalityInfo[] = [
     { id: 'pirat', name: 'Pirat', description: 'Spricht wie ein Pirat, Arrr!', icon: 'Skull' },
 ];
 
-// Load persisted users from localStorage
+// Load persisted users from localStorage (fallback until backend loads)
 const loadPersistedUsers = (): UserProfile[] => {
     try {
         const stored = localStorage.getItem('neon-users');
@@ -63,6 +63,11 @@ const loadPersistedUsers = (): UserProfile[] => {
 const loadCurrentUserId = (): string => {
     return localStorage.getItem('neon-current-user-id') || 'default-user';
 };
+
+// Backend URL for profile API
+const BACKEND_URL = window.location.port === '5173'
+    ? `http://${window.location.hostname}:3001`
+    : window.location.origin;
 
 interface AppState {
     socket: Socket | null;
@@ -100,8 +105,11 @@ interface AppState {
     renameConversation: (id: string, newTitle: string) => void;
 
     // Multi-User Actions
+    loadProfiles: () => void;
     switchUser: (userId: string) => void;
     createUser: (name: string, avatar: string) => void;
+    updateUserName: (name: string) => void;
+    deleteProfile: () => void;
 
     // Personality
     personality: PersonalityMode;
@@ -139,6 +147,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         socket.on('connect', () => {
             console.log('Connected to backend');
             set({ isConnected: true, socket });
+            // Load profiles from backend database
+            get().loadProfiles();
             // Register user for notifications
             socket.emit('register-user', { userId: get().currentUser.id });
         });
@@ -410,6 +420,25 @@ export const useAppStore = create<AppState>((set, get) => ({
         set({ activeView: view });
     },
 
+    loadProfiles: async () => {
+        try {
+            const res = await fetch(`${BACKEND_URL}/api/profiles`);
+            if (res.ok) {
+                const allProfiles: UserProfile[] = await res.json();
+                // Filter out system profiles
+                const profiles = allProfiles.filter(u => u.id !== 'system');
+                if (profiles.length > 0) {
+                    const currentId = localStorage.getItem('neon-current-user-id') || 'default-user';
+                    const currentUser = profiles.find(u => u.id === currentId) || profiles[0];
+                    localStorage.setItem('neon-users', JSON.stringify(profiles));
+                    set({ users: profiles, currentUser });
+                }
+            }
+        } catch (err) {
+            console.error('Failed to load profiles from backend', err);
+        }
+    },
+
     switchUser: (userId: string) => {
         const { users, socket } = get();
         const user = users.find(u => u.id === userId);
@@ -423,12 +452,63 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
     },
 
-    createUser: (name: string, avatar: string) => {
+    createUser: async (name: string, avatar: string) => {
         const id = `user-${Date.now()}`;
         const newUser: UserProfile = { id, name, avatar };
+        try {
+            const res = await fetch(`${BACKEND_URL}/api/profiles`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newUser),
+            });
+            if (res.ok) {
+                const created = await res.json();
+                newUser.id = created.id;
+                newUser.name = created.name;
+                newUser.avatar = created.avatar;
+            }
+        } catch (err) {
+            console.error('Failed to save profile to backend', err);
+        }
         const updatedUsers = [...get().users, newUser];
         localStorage.setItem('neon-users', JSON.stringify(updatedUsers));
         set({ users: updatedUsers });
+    },
+
+    updateUserName: async (name: string) => {
+        const { currentUser, users } = get();
+        const updatedUser = { ...currentUser, name };
+        const updatedUsers = users.map(u => u.id === currentUser.id ? updatedUser : u);
+        localStorage.setItem('neon-users', JSON.stringify(updatedUsers));
+        set({ currentUser: updatedUser, users: updatedUsers });
+        try {
+            await fetch(`${BACKEND_URL}/api/profiles/${currentUser.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name }),
+            });
+        } catch (err) {
+            console.error('Failed to update profile in backend', err);
+        }
+    },
+
+    deleteProfile: async () => {
+        const { currentUser, users, socket } = get();
+        if (currentUser.id === 'default-user') return;
+        const updatedUsers = users.filter(u => u.id !== currentUser.id);
+        const defaultUser = updatedUsers.find(u => u.id === 'default-user') || updatedUsers[0];
+        localStorage.setItem('neon-users', JSON.stringify(updatedUsers));
+        localStorage.setItem('neon-current-user-id', defaultUser.id);
+        set({ users: updatedUsers, currentUser: defaultUser, currentConversation: null, activeView: 'welcome' });
+        if (socket) {
+            socket.emit('register-user', { userId: defaultUser.id });
+            socket.emit('get-conversations', { userId: defaultUser.id });
+        }
+        try {
+            await fetch(`${BACKEND_URL}/api/profiles/${currentUser.id}`, { method: 'DELETE' });
+        } catch (err) {
+            console.error('Failed to delete profile from backend', err);
+        }
     },
 
     setPersonality: (personality: PersonalityMode) => {

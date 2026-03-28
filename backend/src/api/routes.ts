@@ -8,6 +8,7 @@ import { ragRoutes } from './ragRoutes';
 import voiceRoutes from './voice';
 import { settingsRoutes } from './settingsRoutes';
 import { memoryRoutes } from './memoryRoutes';
+import { profileRoutes } from './profileRoutes';
 import { authMiddleware, adminAuthMiddleware } from '../middleware/auth';
 import { memoryMonitor } from '../utils/performance';
 import { semanticSearchService } from '../services/search/SemanticSearchService';
@@ -52,6 +53,7 @@ router.use('/voice', authMiddleware, voiceRoutes);
 router.use('/magic', authMiddleware, magicRoutes);
 router.use('/settings', authMiddleware, settingsRoutes);
 router.use('/memory', authMiddleware, memoryRoutes);
+router.use('/profiles', authMiddleware, profileRoutes);
 router.use('/summary', authMiddleware, summaryRoutes);
 router.use('/rag', authMiddleware, ragRoutes);
 

@@ -23,7 +23,9 @@ interface MemoryStats {
     avgImportance: number;
 }
 
-export default function MemoryDashboard({ userId = 'default-user' }: { userId?: string } = {}) {
+export default function MemoryDashboard({ userId }: { userId?: string } = {}) {
+    const currentUser = useAppStore((state) => state.currentUser);
+    const effectiveUserId = userId || currentUser?.id || 'default-user';
     const socket = useAppStore((state) => state.socket);
     const [memories, setMemories] = useState<Memory[]>([]);
     const [stats, setStats] = useState<MemoryStats | null>(null);
@@ -46,7 +48,7 @@ export default function MemoryDashboard({ userId = 'default-user' }: { userId?: 
 
     useEffect(() => {
         loadData();
-    }, [userId, filter]);
+    }, [effectiveUserId, filter]);
 
     // Progress listener
     useEffect(() => {
@@ -81,12 +83,12 @@ export default function MemoryDashboard({ userId = 'default-user' }: { userId?: 
         try {
             // Load memories
             const typeParam = filter !== 'all' ? `?type=${filter}` : '';
-            const memResponse = await fetch(`http://localhost:3001/api/memory/${userId}${typeParam}`);
+            const memResponse = await fetch(`http://localhost:3001/api/memory/${effectiveUserId}${typeParam}`);
             const memData = await memResponse.json();
             setMemories(Array.isArray(memData) ? memData : memData.memories || []);
 
             // Load stats
-            const statsResponse = await fetch(`http://localhost:3001/api/memory/${userId}/stats`);
+            const statsResponse = await fetch(`http://localhost:3001/api/memory/${effectiveUserId}/stats`);
             const statsData = await statsResponse.json();
             setStats(statsData);
         } catch (error) {
@@ -108,7 +110,7 @@ export default function MemoryDashboard({ userId = 'default-user' }: { userId?: 
 
     const saveEdit = async (memoryId: string) => {
         try {
-            const res = await fetch(`http://localhost:3001/api/memory/${userId}/${memoryId}`, {
+            const res = await fetch(`http://localhost:3001/api/memory/${effectiveUserId}/${memoryId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content: editContent })
@@ -130,7 +132,7 @@ export default function MemoryDashboard({ userId = 'default-user' }: { userId?: 
         if (!confirm('Möchtest du diese Erinnerung wirklich löschen?')) return;
 
         try {
-            const res = await fetch(`http://localhost:3001/api/memory/${userId}/${memoryId}`, {
+            const res = await fetch(`http://localhost:3001/api/memory/${effectiveUserId}/${memoryId}`, {
                 method: 'DELETE'
             });
 
@@ -138,7 +140,7 @@ export default function MemoryDashboard({ userId = 'default-user' }: { userId?: 
                 // Optimistic update
                 setMemories(prev => prev.filter(m => m.id !== memoryId));
                 // Reload stats
-                const statsResponse = await fetch(`http://localhost:3001/api/memory/${userId}/stats`);
+                const statsResponse = await fetch(`http://localhost:3001/api/memory/${effectiveUserId}/stats`);
                 const statsData = await statsResponse.json();
                 setStats(statsData);
             }
@@ -192,7 +194,7 @@ export default function MemoryDashboard({ userId = 'default-user' }: { userId?: 
         setImportStatus('Starte Import...');
 
         try {
-            const res = await fetch(`http://localhost:3001/api/memory/${userId}/import`, {
+            const res = await fetch(`http://localhost:3001/api/memory/${effectiveUserId}/import`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

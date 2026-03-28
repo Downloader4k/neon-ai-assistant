@@ -9,9 +9,8 @@ interface DiaryEntry {
 }
 
 export default function AIDiary() {
-  const users = useAppStore((s) => s.users);
-  const currentUserId = useAppStore((s) => s.currentUserId);
-  const userName = users.find(u => u.id === currentUserId)?.name || 'User';
+  const currentUser = useAppStore((s) => s.currentUser);
+  const userName = currentUser?.name || 'User';
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [generating, setGenerating] = useState(false);

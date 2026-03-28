@@ -17,6 +17,7 @@ datasource db {
 model User {
   id                String               @id @default(uuid())
   name              String
+  avatar            String               @default("👤")
   email             String?              @unique
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt

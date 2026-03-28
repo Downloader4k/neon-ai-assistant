@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Sparkles, TrendingUp, RefreshCw } from 'lucide-react';
+import { useAppStore } from '../store/useAppStore';
 
 interface RadarCategory {
   label: string;
@@ -25,11 +26,12 @@ export default function PersonalityRadar() {
     setLoading(true);
     try {
       // Fetch memories to analyze personality patterns
-      const res = await fetch('/api/memory/default-user');
+      const activeUserId = useAppStore.getState().currentUser?.id || 'default-user';
+      const res = await fetch(`/api/memory/${activeUserId}`);
       const memories = res.ok ? await res.json() : [];
 
       // Fetch conversations for topic analysis
-      const convRes = await fetch('/api/conversations?userId=default-user');
+      const convRes = await fetch(`/api/conversations?userId=${activeUserId}`);
       const conversations = convRes.ok ? await convRes.json() : [];
 
       setTotalMessages(conversations.reduce((acc: number, c: any) => acc + (c._count?.messages || c.messages?.length || 0), 0));

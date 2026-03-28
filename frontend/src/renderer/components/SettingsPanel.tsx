@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, Sliders, Lock, Palette, Keyboard, Check } from 'lucide-react';
+import { Settings, Sliders, Lock, Palette, Keyboard, Check, User } from 'lucide-react';
 import { useAppStore, PERSONALITY_LIST } from '../store/useAppStore';
 
 interface SettingsCategory {
@@ -79,7 +79,17 @@ export default function SettingsPanel() {
             .catch(err => console.error('Failed to load models', err));
     }, []);
 
+    const currentUser = useAppStore((s) => s.currentUser);
+    const updateUserName = useAppStore((s) => s.updateUserName);
+    const deleteProfile = useAppStore((s) => s.deleteProfile);
+    const [displayName, setDisplayName] = useState(currentUser.name);
+
+    useEffect(() => {
+        setDisplayName(currentUser.name);
+    }, [currentUser.name]);
+
     const categories: SettingsCategory[] = [
+        { id: 'profile', label: 'Profil', icon: User },
         { id: 'ai', label: 'KI-Verhalten', icon: Sliders },
         { id: 'privacy', label: 'Datenschutz', icon: Lock },
         { id: 'appearance', label: 'Erscheinungsbild', icon: Palette },
@@ -146,6 +156,76 @@ export default function SettingsPanel() {
 
                     {/* Content */}
                     <div className="flex-1 bg-bg-secondary border border-border rounded-lg p-6">
+                        {activeCategory === 'profile' && (
+                            <div className="space-y-6">
+                                <h2 className="text-2xl font-bold mb-4">Profil</h2>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">
+                                        Wie soll NEON dich nennen?
+                                    </label>
+                                    <div className="flex gap-3">
+                                        <input
+                                            type="text"
+                                            value={displayName}
+                                            onChange={(e) => setDisplayName(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && displayName.trim()) {
+                                                    updateUserName(displayName.trim());
+                                                }
+                                            }}
+                                            placeholder="Dein Name..."
+                                            className="flex-1 px-4 py-2 bg-bg-tertiary border border-border rounded-lg"
+                                            maxLength={30}
+                                        />
+                                        <button
+                                            onClick={() => {
+                                                if (displayName.trim()) {
+                                                    updateUserName(displayName.trim());
+                                                }
+                                            }}
+                                            className="px-4 py-2 bg-primary text-black font-medium rounded-lg transition-colors hover:bg-primary/90"
+                                        >
+                                            Speichern
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-text-secondary mt-2">
+                                        Dieser Name wird in der Begruessung, im Chat und in allen Features angezeigt.
+                                        Er gilt fuer das aktive Profil: <strong>{currentUser.id}</strong>
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Aktives Profil</label>
+                                    <div className="flex items-center gap-3 p-4 bg-bg-tertiary rounded-lg border border-border">
+                                        <span className="text-2xl">{currentUser.avatar}</span>
+                                        <div>
+                                            <div className="font-semibold">{currentUser.name}</div>
+                                            <div className="text-xs text-text-secondary">{currentUser.id}</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {currentUser.id !== 'default-user' && (
+                                    <div className="pt-4 border-t border-border">
+                                        <button
+                                            onClick={() => {
+                                                if (confirm(`Profil "${currentUser.name}" wirklich löschen? Alle Daten dieses Profils (Memories, Konversationen) bleiben erhalten, aber das Profil wird entfernt.`)) {
+                                                    deleteProfile();
+                                                }
+                                            }}
+                                            className="w-full px-4 py-2 bg-red-900/30 border border-red-800 text-red-400 rounded-lg hover:bg-red-900/50 transition-colors text-sm"
+                                        >
+                                            Profil löschen
+                                        </button>
+                                        <p className="text-xs text-text-secondary mt-2">
+                                            Du wirst zum Standard-Profil gewechselt. Das Standard-Profil kann nicht gelöscht werden.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {activeCategory === 'ai' && (
                             <div className="space-y-6">
                                 <h2 className="text-2xl font-bold mb-4">KI-Verhalten</h2>
@@ -450,6 +530,107 @@ export default function SettingsPanel() {
                                         onChange={(e) => updateSetting('appearance', 'animations', e.target.checked)}
                                         className="w-5 h-5"
                                     />
+                                </div>
+                            </div>
+                        )}
+
+                        {activeCategory === 'shortcuts' && (
+                            <div className="space-y-6">
+                                <h2 className="text-2xl font-bold mb-4">Tastenkürzel</h2>
+
+                                {Object.entries(settings.shortcuts).map(([key, value]) => {
+                                    const labels: Record<string, string> = {
+                                        search: 'Suche öffnen',
+                                        newChat: 'Neuer Chat',
+                                        settings: 'Einstellungen',
+                                        voice: 'Spracheingabe',
+                                    };
+                                    return (
+                                        <div key={key} className="flex items-center justify-between">
+                                            <span>{labels[key] || key}</span>
+                                            <input
+                                                type="text"
+                                                value={value}
+                                                onChange={(e) => updateSetting('shortcuts', key, e.target.value)}
+                                                className="w-40 px-3 py-2 bg-bg-tertiary border border-border rounded-lg text-center text-sm font-mono"
+                                            />
+                                        </div>
+                                    );
+                                })}
+
+                                <p className="text-xs text-text-secondary mt-4">
+                                    Klicke in ein Feld und gib die gewünschte Tastenkombination ein (z.B. Ctrl+K).
+                                </p>
+                            </div>
+                        )}
+
+                        {activeCategory === 'advanced' && (
+                            <div className="space-y-6">
+                                <h2 className="text-2xl font-bold mb-4">Erweitert</h2>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">
+                                        Temperatur: {settings.ai.temperature}
+                                    </label>
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="1"
+                                        step="0.05"
+                                        value={settings.ai.temperature}
+                                        onChange={(e) => updateSetting('ai', 'temperature', parseFloat(e.target.value))}
+                                        className="w-full"
+                                    />
+                                    <p className="text-xs text-text-secondary mt-1">
+                                        Niedrig = präzise Antworten, Hoch = kreativere Antworten
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">
+                                        Max Tokens: {settings.ai.maxTokens}
+                                    </label>
+                                    <input
+                                        type="range"
+                                        min="256"
+                                        max="8192"
+                                        step="256"
+                                        value={settings.ai.maxTokens}
+                                        onChange={(e) => updateSetting('ai', 'maxTokens', parseInt(e.target.value))}
+                                        className="w-full"
+                                    />
+                                    <p className="text-xs text-text-secondary mt-1">
+                                        Maximale Länge der KI-Antworten
+                                    </p>
+                                </div>
+
+                                <div className="pt-4 border-t border-border">
+                                    <h3 className="text-lg font-semibold mb-3">Daten</h3>
+                                    <div className="space-y-3">
+                                        <button
+                                            onClick={() => {
+                                                if (confirm('Alle Konversationen löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+                                                    fetch('http://localhost:3001/api/conversations/clear', { method: 'DELETE' })
+                                                        .then(() => alert('Konversationen gelöscht'))
+                                                        .catch(() => alert('Fehler beim Löschen'));
+                                                }
+                                            }}
+                                            className="w-full px-4 py-2 bg-red-900/30 border border-red-800 text-red-400 rounded-lg hover:bg-red-900/50 transition-colors text-sm"
+                                        >
+                                            Alle Konversationen löschen
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                if (confirm('Lokalen Cache leeren? (Theme, Profil-Einstellungen bleiben erhalten)')) {
+                                                    localStorage.removeItem('neon-personality');
+                                                    alert('Cache geleert');
+                                                }
+                                            }}
+                                            className="w-full px-4 py-2 bg-red-900/30 border border-red-800 text-red-400 rounded-lg hover:bg-red-900/50 transition-colors text-sm"
+                                        >
+                                            Lokalen Cache leeren
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         )}

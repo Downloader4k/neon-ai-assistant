@@ -92,7 +92,7 @@ function MessageBubble({ message }: MessageBubbleProps) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userId: 'default-user',
+                    userId: useAppStore.getState().currentUser?.id || 'default-user',
                     content: message.content,
                     type: 'FACT',
                     importanceScore: 0.8,
@@ -130,7 +130,7 @@ function MessageBubble({ message }: MessageBubbleProps) {
                         </div>
 
                         <span className={`text-xs font-bold whitespace-nowrap ${isUser ? 'text-accent-primary' : 'text-accent-secondary'}`}>
-                            {isUser ? (useAppStore.getState().users.find(u => u.id === useAppStore.getState().currentUserId)?.name || 'Du') : 'Neon'}
+                            {isUser ? (useAppStore.getState().currentUser?.name || 'Du') : 'Neon'}
                         </span>
                     </div>
 

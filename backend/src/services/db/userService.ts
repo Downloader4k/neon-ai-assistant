@@ -17,6 +17,7 @@ export async function ensureDefaultUser() {
                 data: {
                     id: defaultUserId,
                     name: 'User',
+                    avatar: '👤',
                     preferences: JSON.stringify({
                         theme: 'dark',
                         language: 'de',
