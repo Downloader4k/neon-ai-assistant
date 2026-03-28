@@ -438,13 +438,14 @@ export const useAppStore = create<AppState>((set, get) => ({
             const res = await fetch(`${BACKEND_URL}/api/profiles`);
             if (res.ok) {
                 const allProfiles: UserProfile[] = await res.json();
-                // Filter out system profiles
+                // Filter out system profiles — DB is the single source of truth
                 const profiles = allProfiles.filter(u => u.id !== 'system');
                 if (profiles.length > 0) {
                     const currentId = localStorage.getItem('neon-current-user-id') || 'default-user';
                     const currentUser = profiles.find(u => u.id === currentId) || profiles[0];
-                    // DB is the single source of truth — overwrite localStorage completely
+                    // Update localStorage to match DB exactly (removes stale/orphaned profiles)
                     localStorage.setItem('neon-users', JSON.stringify(profiles));
+                    localStorage.setItem('neon-current-user-id', currentUser.id);
                     set({ users: profiles, currentUser });
                 }
             }
