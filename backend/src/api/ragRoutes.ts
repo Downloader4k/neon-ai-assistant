@@ -3,8 +3,10 @@ import { prisma } from '../services/db/prisma';
 import { logger } from '../utils/logger';
 import * as fs from 'fs';
 import * as path from 'path';
+import multer from 'multer';
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 const SUPPORTED_EXTENSIONS = ['.txt', '.md', '.json', '.csv', '.ts', '.js', '.py'];
 
@@ -81,6 +83,50 @@ router.post('/index', async (req, res) => {
         logger.error('RAG indexing error', { error });
         res.status(500).json({
             error: 'Indexierung fehlgeschlagen',
+            details: error instanceof Error ? error.message : 'Unbekannter Fehler',
+        });
+    }
+});
+
+// POST /api/rag/upload - Upload and index individual files
+router.post('/upload', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'Keine Datei hochgeladen' });
+        }
+
+        const { originalname, buffer, mimetype } = req.file;
+        let content = '';
+
+        if (mimetype === 'application/pdf') {
+            try {
+                const pdfParse = (await import('pdf-parse')).default;
+                const pdfData = await pdfParse(buffer);
+                content = pdfData.text;
+            } catch (err) {
+                logger.error('PDF parsing failed', { error: err });
+                return res.status(400).json({ error: 'PDF konnte nicht gelesen werden' });
+            }
+        } else {
+            content = buffer.toString('utf-8');
+        }
+
+        const truncatedContent = content.slice(0, 2000);
+
+        await prisma.memoryEntry.create({
+            data: {
+                type: 'FACT',
+                content: `[RAG: ${originalname}] ${truncatedContent}`,
+                importanceScore: 0.7,
+                userId: 'default-user',
+            },
+        });
+
+        res.json({ success: true, filename: originalname, chars: truncatedContent.length });
+    } catch (error) {
+        logger.error('RAG upload error', { error });
+        res.status(500).json({
+            error: 'Upload fehlgeschlagen',
             details: error instanceof Error ? error.message : 'Unbekannter Fehler',
         });
     }

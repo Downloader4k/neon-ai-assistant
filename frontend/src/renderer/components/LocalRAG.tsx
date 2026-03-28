@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { FolderSearch, Database, Search, FileText, AlertCircle, RefreshCw, Loader2, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { FolderSearch, Database, Search, FileText, AlertCircle, RefreshCw, Loader2, CheckCircle2, Upload } from 'lucide-react';
 
 interface SearchResult {
   id: string;
@@ -20,8 +20,10 @@ export default function LocalRAG() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [indexing, setIndexing] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [recentFolders, setRecentFolders] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('rag-recent-folders') || '[]');
@@ -75,6 +77,43 @@ export default function LocalRAG() {
     } finally {
       setIndexing(false);
     }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    setError(null);
+    setSuccess(null);
+
+    let uploaded = 0;
+    let errors = 0;
+
+    for (const file of Array.from(files)) {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const res = await fetch(`${API_BASE}/api/rag/upload`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Upload fehlgeschlagen');
+        }
+        uploaded++;
+      } catch {
+        errors++;
+      }
+    }
+
+    setSuccess(`${uploaded} Datei${uploaded !== 1 ? 'en' : ''} indexiert${errors > 0 ? `, ${errors} Fehler` : ''}`);
+    fetchStatus();
+    setUploading(false);
+    // Reset file input
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleSearch = async () => {
@@ -157,8 +196,28 @@ export default function LocalRAG() {
           </button>
         </div>
         <p className="rag-hint">
-          Unterstuetzte Dateien: .txt, .md, .json, .csv, .ts, .js, .py
+          Unterstuetzte Dateien: .txt, .md, .json, .csv, .ts, .js, .py, .pdf
         </p>
+
+        <div className="rag-file-upload-row">
+          <span className="rag-or-divider">oder</span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept=".txt,.md,.json,.csv,.ts,.js,.py,.pdf"
+            onChange={handleFileUpload}
+            className="rag-file-input-hidden"
+          />
+          <button
+            className="rag-btn rag-btn-secondary rag-btn-upload"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+          >
+            {uploading ? <Loader2 size={18} className="rag-spin" /> : <Upload size={18} />}
+            {uploading ? 'Lade hoch...' : 'Dateien durchsuchen'}
+          </button>
+        </div>
       </div>
 
       {/* Recent Folders */}
@@ -408,6 +467,28 @@ export default function LocalRAG() {
           font-size: 0.75rem;
           color: var(--text-tertiary);
           margin: 0.5rem 0 0 0;
+        }
+
+        .rag-file-upload-row {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          margin-top: 0.75rem;
+        }
+
+        .rag-or-divider {
+          font-size: 0.8rem;
+          color: var(--text-tertiary);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .rag-file-input-hidden {
+          display: none;
+        }
+
+        .rag-btn-upload {
+          flex: 1;
         }
 
         .rag-recent-list {
