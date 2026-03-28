@@ -191,6 +191,72 @@ router.get('/search', async (req, res) => {
     }
 });
 
+// GET /api/rag/files - List all indexed files with metadata
+router.get('/files', async (_req, res) => {
+    try {
+        const entries = await prisma.memoryEntry.findMany({
+            where: {
+                content: { startsWith: '[RAG:' },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        const files = entries.map((entry) => {
+            const match = entry.content.match(/^\[RAG: (.+?)\]\s*/);
+            const filename = match ? match[1] : 'Unbekannt';
+            const rawContent = entry.content.replace(/^\[RAG: .+?\]\s*/, '');
+            // First line or first 120 chars as description
+            const firstLine = rawContent.split('\n').find((l: string) => l.trim().length > 0) || '';
+            const description = firstLine.replace(/^[#>\-*\s]+/, '').trim().slice(0, 120);
+            const charCount = rawContent.length;
+
+            return {
+                id: entry.id,
+                filename,
+                description,
+                charCount,
+                createdAt: entry.createdAt,
+            };
+        });
+
+        res.json({ files, total: files.length });
+    } catch (error) {
+        logger.error('RAG files list error', { error });
+        res.status(500).json({ error: 'Dateiliste konnte nicht geladen werden' });
+    }
+});
+
+// DELETE /api/rag/files/:id - Delete a single indexed file
+router.delete('/files/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.memoryEntry.delete({ where: { id } });
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('RAG file delete error', { error });
+        res.status(500).json({ error: 'Datei konnte nicht geloescht werden' });
+    }
+});
+
+// GET /api/rag/files/:id - Get full content of a single file
+router.get('/files/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const entry = await prisma.memoryEntry.findUnique({ where: { id } });
+        if (!entry) {
+            return res.status(404).json({ error: 'Datei nicht gefunden' });
+        }
+        const match = entry.content.match(/^\[RAG: (.+?)\]\s*/);
+        const filename = match ? match[1] : 'Unbekannt';
+        const content = entry.content.replace(/^\[RAG: .+?\]\s*/, '');
+
+        res.json({ id: entry.id, filename, content, createdAt: entry.createdAt });
+    } catch (error) {
+        logger.error('RAG file get error', { error });
+        res.status(500).json({ error: 'Datei konnte nicht geladen werden' });
+    }
+});
+
 // GET /api/rag/status - Get total number of indexed RAG entries
 router.get('/status', async (_req, res) => {
     try {
