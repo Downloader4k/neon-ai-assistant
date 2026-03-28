@@ -61,12 +61,11 @@ router.post('/index', async (req, res) => {
             try {
                 const content = fs.readFileSync(filePath, 'utf-8');
                 const relativeName = path.relative(resolvedPath, filePath).replace(/\\/g, '/');
-                const truncatedContent = content.slice(0, 1000);
 
                 await prisma.memoryEntry.create({
                     data: {
                         type: 'FACT',
-                        content: `[RAG: ${relativeName}] ${truncatedContent}`,
+                        content: `[RAG: ${relativeName}] ${content}`,
                         importanceScore: 0.7,
                         userId: 'default-user',
                     },
@@ -111,18 +110,16 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             content = buffer.toString('utf-8');
         }
 
-        const truncatedContent = content.slice(0, 2000);
-
         await prisma.memoryEntry.create({
             data: {
                 type: 'FACT',
-                content: `[RAG: ${originalname}] ${truncatedContent}`,
+                content: `[RAG: ${originalname}] ${content}`,
                 importanceScore: 0.7,
                 userId: 'default-user',
             },
         });
 
-        res.json({ success: true, filename: originalname, chars: truncatedContent.length });
+        res.json({ success: true, filename: originalname, chars: content.length });
     } catch (error) {
         logger.error('RAG upload error', { error });
         res.status(500).json({
