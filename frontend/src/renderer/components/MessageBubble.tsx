@@ -130,7 +130,7 @@ function MessageBubble({ message }: MessageBubbleProps) {
                         </div>
 
                         <span className={`text-xs font-bold whitespace-nowrap ${isUser ? 'text-accent-primary' : 'text-accent-secondary'}`}>
-                            {isUser ? 'Du' : 'Neon'}
+                            {isUser ? (useAppStore.getState().users.find(u => u.id === useAppStore.getState().currentUserId)?.name || 'Du') : 'Neon'}
                         </span>
                     </div>
 

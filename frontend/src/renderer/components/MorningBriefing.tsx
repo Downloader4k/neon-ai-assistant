@@ -18,6 +18,8 @@ interface BriefingData {
 
 export default function MorningBriefing({ onStartChat }: { onStartChat: (msg: string) => void }) {
   const setActiveView = useAppStore((state) => state.setActiveView);
+  const users = useAppStore((s) => s.users);
+  const currentUserId = useAppStore((s) => s.currentUserId);
   const [data, setData] = useState<BriefingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [greeting, setGreeting] = useState('');
@@ -114,7 +116,7 @@ export default function MorningBriefing({ onStartChat }: { onStartChat: (msg: st
         <div style={styles.heroGlow} />
         <TimeIcon size={48} color="var(--accent-primary)" style={{ position: 'relative', zIndex: 2 }} />
         <div style={{ position: 'relative', zIndex: 2 }}>
-          <h1 style={styles.heroTitle}>{greeting}!</h1>
+          <h1 style={styles.heroTitle}>{greeting}, {users.find(u => u.id === currentUserId)?.name || 'User'}!</h1>
           <p style={styles.heroSub}>Hier ist dein taegliches Briefing</p>
         </div>
         {weather && (

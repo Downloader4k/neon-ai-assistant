@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Sparkles, Zap, MessageSquare, FileText, Image as ImageIcon, Send, X } from 'lucide-react';
+import { useAppStore } from '../store/useAppStore';
 import { AttachmentMenu } from './AttachmentMenu';
 import { EmojiMenu } from './EmojiMenu';
 
@@ -11,6 +12,9 @@ interface Attachment {
 }
 
 export default function WelcomeScreen({ onStartChat }: { onStartChat: (msg?: string, attachments?: Attachment[]) => void }) {
+  const users = useAppStore((s) => s.users);
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const userName = users.find(u => u.id === currentUserId)?.name || 'User';
   const [inputValue, setInputValue] = useState('');
   const [greetingSubtext, setGreetingSubtext] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -114,7 +118,7 @@ export default function WelcomeScreen({ onStartChat }: { onStartChat: (msg?: str
           <div className="welcome-header-modern">
             <div className="greeting-row">
               <Sparkles size={32} className="greeting-icon" />
-              <span className="greeting-text">Hallo!</span>
+              <span className="greeting-text">Hallo {userName}!</span>
             </div>
             <h2 className="main-question fade-in">{greetingSubtext}</h2>
           </div>

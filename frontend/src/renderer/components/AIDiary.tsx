@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BookOpen, ChevronLeft, ChevronRight, Sparkles, Calendar, RefreshCw } from 'lucide-react';
+import { useAppStore } from '../store/useAppStore';
 
 interface DiaryEntry {
   date: string;
@@ -8,6 +9,9 @@ interface DiaryEntry {
 }
 
 export default function AIDiary() {
+  const users = useAppStore((s) => s.users);
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const userName = users.find(u => u.id === currentUserId)?.name || 'User';
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [generating, setGenerating] = useState(false);
@@ -55,12 +59,12 @@ export default function AIDiary() {
 
       let diary = `**${dayName}, ${dateStr}**\n\n`;
       diary += `Heute war ein ${data.conversations > 3 ? 'sehr aktiver' : data.conversations > 1 ? 'produktiver' : 'ruhiger'} Tag. `;
-      diary += `Der Nutzer und ich haben ${data.conversations || 0} Gespraech${data.conversations !== 1 ? 'e' : ''} gefuehrt `;
+      diary += `${userName} und ich haben ${data.conversations || 0} Gespraech${data.conversations !== 1 ? 'e' : ''} gefuehrt `;
       diary += `mit insgesamt ${data.messages || 0} Nachrichten.\n\n`;
 
       if (topics.length > 0) {
         diary += `Besonders interessant waren die Recherchen zu: ${topics.join(', ')}. `;
-        diary += `Es zeigt sich, dass der Wissenshunger in diesen Bereichen waechst.\n\n`;
+        diary += `Es zeigt sich, dass ${userName}s Wissenshunger in diesen Bereichen waechst.\n\n`;
       }
 
       if (data.memoryEntries > 0) {
@@ -80,7 +84,7 @@ export default function AIDiary() {
       diary += `Die Stimmung heute: ${mood}. `;
 
       if (data.conversations > 0) {
-        diary += `Ich freue mich auf den naechsten Tag.`;
+        diary += `Ich freue mich auf den naechsten Tag mit ${userName}.`;
       }
 
       const entry: DiaryEntry = {
