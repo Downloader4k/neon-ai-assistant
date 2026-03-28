@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Play, CheckCircle, XCircle, Clock, AlertTriangle, BarChart3, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { Play, CheckCircle, XCircle, Clock, AlertTriangle, BarChart3, RefreshCw, ChevronDown, ChevronUp, FileDown } from 'lucide-react';
 
 const BACKEND_URL = window.location.port === '5173'
     ? `http://${window.location.hostname}:3001`
@@ -66,24 +66,51 @@ const SelfTest: React.FC = () => {
         if (!loaded) loadScenarios();
     }, [loaded, loadScenarios]);
 
-    // Alle Tests ausfuehren
+    // Alle Tests einzeln ausfuehren (mit Live-Fortschritt)
     const runAllTests = useCallback(async () => {
+        if (scenarios.length === 0) return;
         setRunning(true);
         setReport(null);
-        setCurrentTest('Starte alle Tests...');
+        setSingleResults(new Map());
 
-        try {
-            const res = await fetch(`${BACKEND_URL}/api/selftest/run-all`, { method: 'POST' });
-            const data: TestReport = await res.json();
-            setReport(data);
-            setCurrentTest('');
-        } catch (err) {
-            console.error('Test run failed:', err);
-            setCurrentTest('Fehler beim Ausfuehren der Tests');
-        } finally {
-            setRunning(false);
+        const results: TestResult[] = [];
+
+        for (let i = 0; i < scenarios.length; i++) {
+            const scenario = scenarios[i];
+            setCurrentTest(`Test ${i + 1}/${scenarios.length}: ${scenario.name}`);
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/selftest/run/${scenario.id}`, { method: 'POST' });
+                const data: TestResult = await res.json();
+                results.push(data);
+                setSingleResults(prev => new Map(prev).set(scenario.id, data));
+            } catch (err) {
+                console.error(`Test ${scenario.id} failed:`, err);
+            }
         }
-    }, []);
+
+        // Gesamtbericht erstellen
+        const passed = results.filter(r => r.evaluation?.passed).length;
+        const failed = results.filter(r => !r.evaluation?.passed).length;
+        const avgScore = results.length > 0
+            ? results.reduce((sum, r) => sum + (r.evaluation?.score || 0), 0) / results.length
+            : 0;
+        const allSuggestions = results
+            .flatMap(r => r.evaluation?.suggestions || [])
+            .filter((s, i, arr) => arr.indexOf(s) === i);
+
+        setReport({
+            timestamp: new Date().toISOString(),
+            totalTests: results.length,
+            passed,
+            failed,
+            averageScore: Math.round(avgScore * 10) / 10,
+            results,
+            allSuggestions,
+        });
+        setCurrentTest('');
+        setRunning(false);
+    }, [scenarios]);
 
     // Einzelnen Test ausfuehren
     const runSingleTest = useCallback(async (scenarioId: string) => {
@@ -121,6 +148,99 @@ const SelfTest: React.FC = () => {
         return 'Kritisch';
     };
 
+    // ─── PDF Export (Browser Print-to-PDF) ────────────────────────
+    const exportPDF = useCallback(() => {
+        if (!report) return;
+
+        const date = new Date(report.timestamp);
+        const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        const categories = [...new Set(report.results.map(r => r.scenario.category))];
+
+        let resultsHtml = '';
+        for (const cat of categories) {
+            resultsHtml += `<h2 class="cat">${esc(cat.toUpperCase())}</h2>`;
+            const catResults = report.results.filter(r => r.scenario.category === cat);
+            for (const result of catResults) {
+                const ev = result.evaluation;
+                const scoreClass = ev.score >= 8 ? 'green' : ev.score >= 6 ? 'yellow' : 'red';
+                resultsHtml += `<div class="test-card">
+                    <div class="test-header">
+                        <span class="badge ${scoreClass}">${ev.passed ? 'PASS' : 'FAIL'}</span>
+                        <strong>${esc(result.scenario.name)}</strong>
+                        <span class="score ${scoreClass}">${ev.score}/10</span>
+                        <span class="meta">${esc(result.provider)} (${esc(result.model)}) — ${(result.durationMs / 1000).toFixed(1)}s</span>
+                    </div>
+                    <div class="response"><b>NEON Antwort:</b><br/>${esc(result.neonResponse)}</div>
+                    <div class="criteria">
+                        ${ev.criteriaResults.map(cr => `
+                            <div class="cr ${cr.passed ? 'pass' : 'fail'}">
+                                <span>${cr.passed ? '+' : '-'}</span>
+                                <div><strong>${esc(cr.criterion)}</strong>${cr.comment ? `<br/><span class="comment">${esc(cr.comment)}</span>` : ''}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    ${ev.overallComment ? `<div class="overall">${esc(ev.overallComment)}</div>` : ''}
+                    ${ev.suggestions.length > 0 ? `<div class="suggestions"><b>Verbesserungen:</b><ul>${ev.suggestions.map(s => `<li>${esc(s)}</li>`).join('')}</ul></div>` : ''}
+                </div>`;
+            }
+        }
+
+        const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+<title>NEON Self-Test Bericht</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1e293b; padding: 32px; max-width: 800px; margin: 0 auto; font-size: 13px; line-height: 1.5; }
+    h1 { font-size: 22px; margin-bottom: 4px; }
+    .subtitle { color: #64748b; font-size: 12px; margin-bottom: 24px; }
+    .summary { display: flex; gap: 16px; margin-bottom: 24px; }
+    .summary-card { flex: 1; background: #f1f5f9; border-radius: 8px; padding: 14px; text-align: center; }
+    .summary-card .num { font-size: 26px; font-weight: bold; }
+    .summary-card .label { font-size: 11px; color: #64748b; }
+    .green { color: #16a34a; } .yellow { color: #ca8a04; } .red { color: #dc2626; }
+    .suggestions-box { background: #fffbeb; border: 1px solid #f59e0b44; border-radius: 8px; padding: 14px; margin-bottom: 24px; }
+    .suggestions-box b { color: #92400e; }
+    .suggestions-box ul { margin: 8px 0 0 18px; }
+    .suggestions-box li { margin-bottom: 4px; color: #78350f; }
+    .cat { font-size: 13px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin: 20px 0 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+    .test-card { border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; padding: 12px; page-break-inside: avoid; }
+    .test-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+    .badge { font-size: 10px; font-weight: bold; padding: 2px 8px; border-radius: 4px; background: #f1f5f9; }
+    .badge.green { background: #dcfce7; color: #16a34a; } .badge.red { background: #fee2e2; color: #dc2626; } .badge.yellow { background: #fef9c3; color: #ca8a04; }
+    .score { font-weight: bold; margin-left: auto; }
+    .meta { font-size: 11px; color: #94a3b8; }
+    .response { background: #f8fafc; border-radius: 6px; padding: 8px 10px; font-size: 12px; color: #475569; margin-bottom: 8px; white-space: pre-wrap; word-break: break-word; }
+    .criteria { margin-bottom: 8px; }
+    .cr { display: flex; gap: 6px; padding: 3px 0; font-size: 12px; }
+    .cr span:first-child { font-weight: bold; width: 14px; flex-shrink: 0; }
+    .cr.pass span:first-child { color: #16a34a; } .cr.fail span:first-child { color: #dc2626; }
+    .comment { color: #94a3b8; font-size: 11px; }
+    .overall { background: #f1f5f9; border-left: 3px solid #94a3b8; padding: 8px 10px; font-size: 12px; color: #64748b; border-radius: 4px; margin-bottom: 8px; }
+    .suggestions { font-size: 12px; color: #92400e; } .suggestions ul { margin: 4px 0 0 18px; }
+    @media print { body { padding: 16px; } .test-card { page-break-inside: avoid; } }
+</style></head><body>
+    <h1>NEON Self-Test Bericht</h1>
+    <div class="subtitle">Erstellt: ${date.toLocaleDateString('de-DE')} um ${date.toLocaleTimeString('de-DE')}</div>
+    <div class="summary">
+        <div class="summary-card"><div class="num ${report.averageScore >= 8 ? 'green' : report.averageScore >= 6 ? 'yellow' : 'red'}">${report.averageScore}/10</div><div class="label">Durchschnitt</div></div>
+        <div class="summary-card"><div class="num green">${report.passed}</div><div class="label">Bestanden</div></div>
+        <div class="summary-card"><div class="num red">${report.failed}</div><div class="label">Durchgefallen</div></div>
+        <div class="summary-card"><div class="num">${report.totalTests}</div><div class="label">Tests gesamt</div></div>
+    </div>
+    ${report.allSuggestions.length > 0 ? `<div class="suggestions-box"><b>Verbesserungsvorschlaege von Claude:</b><ul>${report.allSuggestions.map(s => `<li>${esc(s)}</li>`).join('')}</ul></div>` : ''}
+    ${resultsHtml}
+</body></html>`;
+
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+            printWindow.document.write(html);
+            printWindow.document.close();
+            printWindow.onload = () => {
+                printWindow.print();
+            };
+        }
+    }, [report]);
+
     return (
         <div style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto', color: '#e2e8f0' }}>
             {/* Header */}
@@ -133,26 +253,49 @@ const SelfTest: React.FC = () => {
                         Automatisierte Qualitaetspruefung — Claude bewertet NEON's Antworten
                     </p>
                 </div>
-                <button
-                    onClick={runAllTests}
-                    disabled={running}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '10px 20px',
-                        background: running ? '#334155' : '#3b82f6',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        cursor: running ? 'not-allowed' : 'pointer',
-                        fontSize: '14px',
-                        fontWeight: 600,
-                    }}
-                >
-                    {running ? <RefreshCw size={16} className="spin" /> : <Play size={16} />}
-                    {running ? 'Tests laufen...' : 'Alle Tests starten'}
-                </button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    {report && (
+                        <button
+                            onClick={exportPDF}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '10px 20px',
+                                background: '#10b98122',
+                                color: '#10b981',
+                                border: '1px solid #10b98144',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontSize: '14px',
+                                fontWeight: 600,
+                            }}
+                        >
+                            <FileDown size={16} />
+                            PDF Export
+                        </button>
+                    )}
+                    <button
+                        onClick={runAllTests}
+                        disabled={running}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '10px 20px',
+                            background: running ? '#334155' : '#3b82f6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: running ? 'not-allowed' : 'pointer',
+                            fontSize: '14px',
+                            fontWeight: 600,
+                        }}
+                    >
+                        {running ? <RefreshCw size={16} className="spin" /> : <Play size={16} />}
+                        {running ? 'Tests laufen...' : 'Alle Tests starten'}
+                    </button>
+                </div>
             </div>
 
             {/* Laufender Test */}

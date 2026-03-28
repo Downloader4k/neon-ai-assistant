@@ -18,26 +18,37 @@ export interface ClaudeResponse {
 }
 
 export class ClaudeService {
-    private client: Anthropic;
+    private client: Anthropic | null = null;
     private model: string = 'claude-sonnet-4-5-20250929'; // User requested specific model override
     private maxTokens: number = 8192;
+    private initialized = false;
 
-    constructor() {
-        const apiKey = process.env.ANTHROPIC_API_KEY;
-        if (!apiKey) {
-            logger.warn('ANTHROPIC_API_KEY not set — Claude service will not be available');
-            this.client = null as any;
-            return;
+    private ensureClient(): Anthropic {
+        if (!this.initialized) {
+            this.initialized = true;
+            const apiKey = process.env.ANTHROPIC_API_KEY;
+            if (apiKey) {
+                this.client = new Anthropic({ apiKey });
+                logger.info('Claude service initialized successfully');
+            } else {
+                logger.warn('ANTHROPIC_API_KEY not set — Claude service will not be available');
+            }
         }
-
-        this.client = new Anthropic({
-            apiKey: apiKey,
-        });
-
-        logger.info('Claude service initialized successfully');
+        if (!this.client) {
+            throw new Error('Claude service not available — ANTHROPIC_API_KEY not set');
+        }
+        return this.client;
     }
 
     get isAvailable(): boolean {
+        if (!this.initialized) {
+            this.initialized = true;
+            const apiKey = process.env.ANTHROPIC_API_KEY;
+            if (apiKey) {
+                this.client = new Anthropic({ apiKey });
+                logger.info('Claude service initialized successfully');
+            }
+        }
         return this.client !== null;
     }
 
@@ -66,7 +77,7 @@ export class ClaudeService {
                 historyLength: conversationHistory.length,
             });
 
-            const response = await this.client.messages.create({
+            const response = await this.ensureClient().messages.create({
                 model: this.model,
                 max_tokens: this.maxTokens,
                 messages: messages as any, // SDK type compat
@@ -123,7 +134,7 @@ export class ClaudeService {
                 historyLength: conversationHistory.length,
             });
 
-            const stream = await this.client.messages.stream({
+            const stream = await this.ensureClient().messages.stream({
                 model: this.model,
                 max_tokens: this.maxTokens,
                 messages: messages as any,

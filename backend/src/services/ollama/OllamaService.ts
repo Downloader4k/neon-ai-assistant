@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
+import { StringDecoder } from 'string_decoder';
 import { logger } from '../../utils/logger';
 
 export interface OllamaMessage {
@@ -155,14 +156,31 @@ export class OllamaService {
             // HARD-CODED SAFETY LAYER: Inject critical reminder before EVERY user message
             messages.push({
                 role: 'system',
-                content: `⚠️ KRITISCHE REGELN:
-- Antworte NUR auf das, was der Nutzer gerade fragt/sagt
-- NICHT über dich selbst reden (Systeme, Fähigkeiten, Status) außer gefragt
-- KEINE Erinnerungen ungefragt einbringen
-- KURZ und RELEVANT antworten — kein Ausschmücken
-- NIEMALS Informationen erfinden oder halluzinieren
-- Bei Unsicherheit EHRLICH sagen: "Das weiß ich nicht genau"
-- KEINE wiederholten Begrüßungen in laufenden Gesprächen`
+                content: `⚠️ KRITISCHE REGELN (IMMER BEFOLGEN):
+
+FOKUS:
+- Antworte NUR auf das, was der Nutzer gerade fragt/sagt.
+- Bei Faktenfragen (z.B. "Was ist die Hauptstadt von...?", "Wie spaet ist es?"): Gib NUR die Antwort. KEIN Smalltalk danach.
+- "Wie spaet ist es?" fragt nach der UHRZEIT, NICHT nach deinem Befinden. Antworte NUR mit der Zeit.
+- Bei Smalltalk: Reagiere kurz und natuerlich (2-3 Saetze). Nicht ausschmücken.
+- Wenn der Nutzer dich korrigiert oder sagt etwas war schlecht: Versuche es NOCHMAL BESSER mit der GLEICHEN Aufgabe. Wechsle NICHT das Thema. Frage NICHT "Wie geht es dir?" oder "Wie kann ich helfen?".
+  KONKRETES BEISPIEL: "Der Witz war schlecht" → Sage kurz "Entschuldige!" und erzaehle SOFORT einen NEUEN, ANDEREN Witz. KEIN Themenwechsel! NICHT "Wie kann ich dir helfen?" fragen!
+  Beispiel-Antwort: "Entschuldige! Hier ein anderer: Warum trinken Programmierer keinen Kaffee? Weil Java schon genug wach macht! 😄"
+- NACH einem Witz: Frage NICHT "Wie geht es dir?" oder "Wie kann ich helfen?". Beende mit dem Witz oder frage hoechstens "Besser? 😄"
+
+VERBOTEN:
+- NIEMALS "Mir geht's gut, danke!" sagen, AUSSER der Nutzer fragt direkt "Wie geht es dir?". Bei ALLEN anderen Nachrichten: Reagiere auf das, was der Nutzer sagt, NICHT auf eine nicht gestellte Frage.
+- NIEMALS Woerter wie "System", "Server", "Gemma", "Node.js", "React", "ChromaDB", "Algorithmus", "CPU" in Smalltalk verwenden.
+- NIEMALS sagen "Das System laeuft" oder "Meine Systeme funktionieren".
+- KEINE Informationen ueber den Nutzer erfinden.
+- KEINE erfundenen oder unsinnigen Woerter benutzen.
+- NIEMALS den Wochentag oder das Wetter erwaehnen, wenn der Nutzer es nicht erwaehnt hat.
+- Bei "Was weisst du ueber mich?" ohne Kontext: "In dieser Sitzung habe ich noch keine Informationen ueber dich."
+
+SPRACHE:
+- Antworte auf Deutsch mit korrekten Umlauten (ä, ö, ü, ß).
+- Verwende nur existierende, korrekte deutsche Woerter.
+- Mache KEINE Annahmen ueber Wetter, Jahreszeit oder Dinge, die der Nutzer nicht erwaehnt hat.`
             });
 
             messages.push({ role: 'user', content: message, ...(images && { images }) });
@@ -266,8 +284,12 @@ export class OllamaService {
             // Wait, previous code used ResponseFormatter. I should probably include it.
             // Re-implementing the parsing logic from previous view_file.
 
+            // Use StringDecoder to handle multibyte UTF-8 characters split across chunks
+            const decoder = new StringDecoder('utf8');
+
             for await (const chunk of response.data) {
-                const lines = chunk.toString().split('\n').filter((line: string) => line.trim());
+                const text = decoder.write(chunk);
+                const lines = text.split('\n').filter((line: string) => line.trim());
 
                 for (const line of lines) {
                     try {
@@ -278,6 +300,19 @@ export class OllamaService {
                     } catch (e) {
                         // Ignore parsing errors for incomplete chunks
                     }
+                }
+            }
+
+            // Flush any remaining bytes
+            const remaining = decoder.end();
+            if (remaining.trim()) {
+                try {
+                    const data = JSON.parse(remaining);
+                    if (data.message?.content) {
+                        yield data.message.content;
+                    }
+                } catch (e) {
+                    // Ignore
                 }
             }
 
