@@ -53,7 +53,20 @@ export const PERSONALITY_LIST: PersonalityInfo[] = [
 const loadPersistedUsers = (): UserProfile[] => {
     try {
         const stored = localStorage.getItem('neon-users');
-        if (stored) return JSON.parse(stored);
+        if (stored) {
+            const parsed: UserProfile[] = JSON.parse(stored);
+            // Deduplicate by id
+            const seen = new Set<string>();
+            const deduped = parsed.filter(u => {
+                if (seen.has(u.id)) return false;
+                seen.add(u.id);
+                return true;
+            });
+            if (deduped.length !== parsed.length) {
+                localStorage.setItem('neon-users', JSON.stringify(deduped));
+            }
+            return deduped;
+        }
     } catch {}
     const defaults: UserProfile[] = [{ id: 'default-user', name: 'User', avatar: '👤' }];
     localStorage.setItem('neon-users', JSON.stringify(defaults));
@@ -430,6 +443,7 @@ export const useAppStore = create<AppState>((set, get) => ({
                 if (profiles.length > 0) {
                     const currentId = localStorage.getItem('neon-current-user-id') || 'default-user';
                     const currentUser = profiles.find(u => u.id === currentId) || profiles[0];
+                    // DB is the single source of truth — overwrite localStorage completely
                     localStorage.setItem('neon-users', JSON.stringify(profiles));
                     set({ users: profiles, currentUser });
                 }
@@ -470,7 +484,10 @@ export const useAppStore = create<AppState>((set, get) => ({
         } catch (err) {
             console.error('Failed to save profile to backend', err);
         }
-        const updatedUsers = [...get().users, newUser];
+        // Prevent duplicates by checking if profile already exists
+        const existing = get().users;
+        if (existing.some(u => u.id === newUser.id)) return;
+        const updatedUsers = [...existing, newUser];
         localStorage.setItem('neon-users', JSON.stringify(updatedUsers));
         set({ users: updatedUsers });
     },
