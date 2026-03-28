@@ -522,6 +522,52 @@ ${contextBlock}
                 logger.warn('Failed to query Knowledge Base in stream route', { error: ragError });
             }
 
+            // LOCAL RAG: Query indexed files from database
+            try {
+                if (textMessage.length > 3) {
+                    const keywords = textMessage.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2);
+                    const ragEntries = await prisma.memoryEntry.findMany({
+                        where: {
+                            content: { startsWith: '[RAG:' },
+                        },
+                        orderBy: { createdAt: 'desc' },
+                        take: 100,
+                    });
+
+                    if (ragEntries.length > 0) {
+                        const scored = ragEntries
+                            .map((entry: any) => {
+                                const lower = entry.content.toLowerCase();
+                                const hits = keywords.filter((kw: string) => lower.includes(kw)).length;
+                                return { entry, score: hits / keywords.length };
+                            })
+                            .filter((s: any) => s.score > 0.2)
+                            .sort((a: any, b: any) => b.score - a.score)
+                            .slice(0, 5);
+
+                        if (scored.length > 0) {
+                            logger.info(`📂 Local RAG: ${scored.length} relevant entries found`);
+                            const localRagBlock = scored
+                                .map((s: any) => {
+                                    const match = s.entry.content.match(/^\[RAG: (.+?)\]\s*/);
+                                    const filename = match ? match[1] : 'Unbekannt';
+                                    const content = s.entry.content.replace(/^\[RAG: .+?\]\s*/, '');
+                                    return `### LOKALE DATEI: ${filename}\n${content}`;
+                                })
+                                .join('\n\n');
+
+                            ragSystemPrompt += `
+[LOKALE DATEIEN - INDEXIERTE INHALTE]
+${localRagBlock}
+[ENDE LOKALE DATEIEN]
+`;
+                        }
+                    }
+                }
+            } catch (localRagError) {
+                logger.warn('Failed to query local RAG entries in stream route', { error: localRagError });
+            }
+
             const currentSystemPrompt = systemPrompt || '';
             const systemPromptWithRag = ragSystemPrompt ? `${currentSystemPrompt}\n${ragSystemPrompt}`.trim() : currentSystemPrompt;
 
