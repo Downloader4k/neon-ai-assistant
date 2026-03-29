@@ -1,19 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 500">
-  <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1a1a2e"/>
-      <stop offset="100%" stop-color="#16213e"/>
-    </linearGradient>
-    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#F5A623"/>
-      <stop offset="100%" stop-color="#FF6B35"/>
-    </linearGradient>
-  </defs>
-
-  <rect width="900" height="500" fill="url(#bg)" rx="16"/>
+  <rect width="900" height="500" fill="#1a1a2e" rx="16"/>
 
   <!-- Header -->
-  <text x="450" y="55" font-family="Segoe UI, Arial, sans-serif" font-size="32" font-weight="700" fill="url(#accent)" text-anchor="middle">NEON AI Assistant</text>
+  <text x="450" y="55" font-family="Segoe UI, Arial, sans-serif" font-size="32" font-weight="700" fill="#F5A623" text-anchor="middle">NEON AI Assistant</text>
   <text x="450" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#8892b0" text-anchor="middle">Persoenlicher KI-Assistent mit Hybrid-Routing, 5-Layer Memory &amp; Magic Features</text>
 
   <!-- Sidebar mockup -->

@@ -1,11 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 400">
-  <defs>
-    <linearGradient id="bg3" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1a1a2e"/>
-      <stop offset="100%" stop-color="#16213e"/>
-    </linearGradient>
-  </defs>
-  <rect width="900" height="400" fill="url(#bg3)" rx="16"/>
+  <rect width="900" height="400" fill="#1a1a2e" rx="16"/>
 
   <text x="450" y="38" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" fill="#F5A623" text-anchor="middle">Architektur</text>
 
