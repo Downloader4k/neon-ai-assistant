@@ -1,68 +1,86 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 320">
-  <rect width="900" height="320" fill="#1a1a2e" rx="16"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 340">
+  <!-- Background -->
+  <rect width="900" height="340" fill="#0f0f0f" rx="16"/>
 
-  <text x="450" y="40" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" fill="#F5A623" text-anchor="middle">Magic Features</text>
-  <text x="450" y="62" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#8892b0" text-anchor="middle">Einzigartige Funktionen, die klassische Chatbots nicht bieten</text>
+  <!-- Header -->
+  <text x="450" y="32" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" fill="#f9ab00" text-anchor="middle">12 Magic Features</text>
 
-  <!-- Row 1 -->
-  <rect x="30" y="85" width="170" height="100" rx="12" fill="#1a1f35" stroke="#FF9800" stroke-width="1"/>
-  <text x="115" y="115" font-family="Segoe UI, Arial, sans-serif" font-size="22" text-anchor="middle">&#9749;</text>
-  <text x="115" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" fill="#FF9800" text-anchor="middle">Morgenbriefing</text>
-  <text x="115" y="157" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#8892b0" text-anchor="middle">Wetter, Streaks, Vorschlaege</text>
-  <text x="115" y="172" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#8892b0" text-anchor="middle">taeglich personalisiert</text>
+  <!-- Divider -->
+  <line x1="30" y1="44" x2="870" y2="44" stroke="#333" stroke-width="1"/>
 
-  <rect x="210" y="85" width="170" height="100" rx="12" fill="#1a1f35" stroke="#2196F3" stroke-width="1"/>
-  <text x="295" y="115" font-family="Segoe UI, Arial, sans-serif" font-size="22" text-anchor="middle">&#128200;</text>
-  <text x="295" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" fill="#2196F3" text-anchor="middle">Interessen-Radar</text>
-  <text x="295" y="157" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#8892b0" text-anchor="middle">Canvas Radar-Chart</text>
-  <text x="295" y="172" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#8892b0" text-anchor="middle">6 Kategorien analysiert</text>
+  <!-- Category: Taegliche Begleitung -->
+  <text x="40" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#FF9800">TAEGLICHE BEGLEITUNG</text>
+  <line x1="40" y1="74" x2="200" y2="74" stroke="#FF9800" stroke-width="1" opacity="0.4"/>
 
-  <rect x="390" y="85" width="170" height="100" rx="12" fill="#1a1f35" stroke="#9C27B0" stroke-width="1"/>
-  <text x="475" y="115" font-family="Segoe UI, Arial, sans-serif" font-size="22" text-anchor="middle">&#128336;</text>
-  <text x="475" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" fill="#9C27B0" text-anchor="middle">Gedanken-Zeitstrahl</text>
-  <text x="475" y="157" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#8892b0" text-anchor="middle">Chronologische Timeline</text>
-  <text x="475" y="172" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#8892b0" text-anchor="middle">aller Aktivitaeten</text>
+  <rect x="30" y="82" width="265" height="36" rx="8" fill="#1a1a1a" stroke="#333" stroke-width="1"/>
+  <text x="46" y="105" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#FF9800">&#9749;</text>
+  <text x="66" y="105" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#e0e0e0">Morgenbriefing</text>
+  <text x="170" y="105" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#999">Wetter &amp; Tipps</text>
 
-  <rect x="570" y="85" width="150" height="100" rx="12" fill="#1a1f35" stroke="#F44336" stroke-width="1"/>
-  <text x="645" y="115" font-family="Segoe UI, Arial, sans-serif" font-size="22" text-anchor="middle">&#128274;</text>
-  <text x="645" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" fill="#F44336" text-anchor="middle">Geheime Notizen</text>
-  <text x="645" y="157" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#8892b0" text-anchor="middle">PIN-geschuetzter</text>
-  <text x="645" y="172" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#8892b0" text-anchor="middle">privater Editor</text>
+  <rect x="30" y="124" width="265" height="36" rx="8" fill="#1a1a1a" stroke="#333" stroke-width="1"/>
+  <text x="46" y="147" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#FF9800">&#9788;</text>
+  <text x="66" y="147" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#e0e0e0">Tagesrueckblick</text>
+  <text x="178" y="147" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#999">Auto-Summary</text>
 
-  <rect x="730" y="85" width="140" height="100" rx="12" fill="#1a1f35" stroke="#4CAF50" stroke-width="1"/>
-  <text x="800" y="115" font-family="Segoe UI, Arial, sans-serif" font-size="22" text-anchor="middle">&#128214;</text>
-  <text x="800" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" fill="#4CAF50" text-anchor="middle">KI-Tagebuch</text>
-  <text x="800" y="157" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#8892b0" text-anchor="middle">Automatisches Journal</text>
-  <text x="800" y="172" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#8892b0" text-anchor="middle">ueber Gespraeche</text>
+  <rect x="30" y="166" width="265" height="36" rx="8" fill="#1a1a1a" stroke="#333" stroke-width="1"/>
+  <text x="46" y="189" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#FF9800">&#127942;</text>
+  <text x="66" y="189" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#e0e0e0">Challenges</text>
+  <text x="148" y="189" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#999">7 Typen &amp; Streaks</text>
 
-  <!-- Row 2 -->
-  <rect x="30" y="200" width="170" height="100" rx="12" fill="#1a1f35" stroke="#FF5722" stroke-width="1"/>
-  <text x="115" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="22" text-anchor="middle">&#127942;</text>
-  <text x="115" y="255" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" fill="#FF5722" text-anchor="middle">Challenges</text>
-  <text x="115" y="272" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#8892b0" text-anchor="middle">7 Typen, Streaks, Badges</text>
-  <text x="115" y="287" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#8892b0" text-anchor="middle">Taegliche Raetsel</text>
+  <!-- Category: Selbstreflexion -->
+  <text x="320" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#9C27B0">SELBSTREFLEXION</text>
+  <line x1="320" y1="74" x2="470" y2="74" stroke="#9C27B0" stroke-width="1" opacity="0.4"/>
 
-  <rect x="210" y="200" width="170" height="100" rx="12" fill="#1a1f35" stroke="#E91E63" stroke-width="1"/>
-  <text x="295" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="22" text-anchor="middle">&#127873;</text>
-  <text x="295" y="255" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" fill="#E91E63" text-anchor="middle">Zeitkapseln</text>
-  <text x="295" y="272" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#8892b0" text-anchor="middle">Nachrichten an dein</text>
-  <text x="295" y="287" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#8892b0" text-anchor="middle">zukuenftiges Ich</text>
+  <rect x="310" y="82" width="275" height="36" rx="8" fill="#1a1a1a" stroke="#333" stroke-width="1"/>
+  <text x="326" y="105" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#9C27B0">&#8986;</text>
+  <text x="346" y="105" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#e0e0e0">Gedanken-Zeitstrahl</text>
+  <text x="480" y="105" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#999">Timeline</text>
 
-  <rect x="390" y="200" width="170" height="100" rx="12" fill="#1a1f35" stroke="#3F51B5" stroke-width="1"/>
-  <text x="475" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="22" text-anchor="middle">&#128279;</text>
-  <text x="475" y="255" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" fill="#3F51B5" text-anchor="middle">Agenten-Ketten</text>
-  <text x="475" y="272" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#8892b0" text-anchor="middle">Mehrstufige KI-Workflows</text>
-  <text x="475" y="287" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#8892b0" text-anchor="middle">automatisieren</text>
+  <rect x="310" y="124" width="275" height="36" rx="8" fill="#1a1a1a" stroke="#333" stroke-width="1"/>
+  <text x="326" y="147" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#9C27B0">&#9670;</text>
+  <text x="346" y="147" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#e0e0e0">Interessen-Radar</text>
+  <text x="466" y="147" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#999">Radar-Chart</text>
 
-  <rect x="570" y="200" width="150" height="100" rx="12" fill="#1a1f35" stroke="#00BCD4" stroke-width="1"/>
-  <text x="645" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="22" text-anchor="middle">&#9998;</text>
-  <text x="645" y="255" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" fill="#00BCD4" text-anchor="middle">Whiteboard</text>
-  <text x="645" y="272" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#8892b0" text-anchor="middle">Zeichnen, Formen</text>
-  <text x="645" y="287" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#8892b0" text-anchor="middle">Text &amp; PNG-Export</text>
+  <rect x="310" y="166" width="275" height="36" rx="8" fill="#1a1a1a" stroke="#333" stroke-width="1"/>
+  <text x="326" y="189" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#9C27B0">&#128214;</text>
+  <text x="346" y="189" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#e0e0e0">KI-Tagebuch</text>
+  <text x="436" y="189" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#999">Auto-Journal</text>
 
-  <rect x="730" y="200" width="140" height="100" rx="12" fill="#1a1f35" stroke="#795548" stroke-width="1"/>
-  <text x="800" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="22" text-anchor="middle">&#128269;</text>
-  <text x="800" y="255" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" fill="#795548" text-anchor="middle">Dateien-RAG</text>
-  <text x="800" y="272" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#8892b0" text-anchor="middle">Lokale Ordner</text>
-  <text x="800" y="287" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#8892b0" text-anchor="middle">semantisch durchsuchen</text>
+  <rect x="310" y="208" width="275" height="36" rx="8" fill="#1a1a1a" stroke="#333" stroke-width="1"/>
+  <text x="326" y="231" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#9C27B0">&#127873;</text>
+  <text x="346" y="231" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#e0e0e0">Zeitkapseln</text>
+  <text x="436" y="231" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#999">Zukunfts-Nachrichten</text>
+
+  <!-- Category: Kreativ-Tools -->
+  <text x="610" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#00BCD4">KREATIV &amp; TOOLS</text>
+  <line x1="610" y1="74" x2="760" y2="74" stroke="#00BCD4" stroke-width="1" opacity="0.4"/>
+
+  <rect x="600" y="82" width="275" height="36" rx="8" fill="#1a1a1a" stroke="#333" stroke-width="1"/>
+  <text x="616" y="105" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#00BCD4">&#9998;</text>
+  <text x="636" y="105" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#e0e0e0">Whiteboard</text>
+  <text x="720" y="105" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#999">Zeichnen &amp; Export</text>
+
+  <rect x="600" y="124" width="275" height="36" rx="8" fill="#1a1a1a" stroke="#333" stroke-width="1"/>
+  <text x="616" y="147" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#00BCD4">&#128279;</text>
+  <text x="636" y="147" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#e0e0e0">Agenten-Ketten</text>
+  <text x="746" y="147" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#999">KI-Workflows</text>
+
+  <rect x="600" y="166" width="275" height="36" rx="8" fill="#1a1a1a" stroke="#333" stroke-width="1"/>
+  <text x="616" y="189" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#00BCD4">&#128269;</text>
+  <text x="636" y="189" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#e0e0e0">Dateien-RAG</text>
+  <text x="732" y="189" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#999">Semantische Suche</text>
+
+  <rect x="600" y="208" width="275" height="36" rx="8" fill="#1a1a1a" stroke="#333" stroke-width="1"/>
+  <text x="616" y="231" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#00BCD4">&#128274;</text>
+  <text x="636" y="231" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#e0e0e0">Geheime Notizen</text>
+  <text x="752" y="231" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#999">PIN-geschuetzt</text>
+
+  <rect x="600" y="250" width="275" height="36" rx="8" fill="#1a1a1a" stroke="#333" stroke-width="1"/>
+  <text x="616" y="273" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#00BCD4">&#128300;</text>
+  <text x="636" y="273" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#e0e0e0">Erklaer-Stufen</text>
+  <text x="740" y="273" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#999">Kind bis Experte</text>
+
+  <!-- Bottom info -->
+  <line x1="30" y1="306" x2="870" y2="306" stroke="#333" stroke-width="1"/>
+  <text x="450" y="326" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#666" text-anchor="middle">Alle Features sind ueber Slash-Commands, die Entdecken-Seite oder den Skills-Hub erreichbar</text>
 </svg>
