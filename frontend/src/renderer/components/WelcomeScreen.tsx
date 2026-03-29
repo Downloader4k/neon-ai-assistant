@@ -1,8 +1,26 @@
-import { useState, useEffect, useRef } from 'react';
-import { Sparkles, Zap, MessageSquare, FileText, Image as ImageIcon, Send, X } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { Sparkles, Zap, MessageSquare, FileText, Image as ImageIcon, Send, X, CloudSun, Search, Code2, Gift, Globe, Brain, HelpCircle, Slash, type LucideIcon } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { AttachmentMenu } from './AttachmentMenu';
 import { EmojiMenu } from './EmojiMenu';
+
+// --- Slash Commands (shared definition) ---
+interface SlashCommand {
+  command: string;
+  args: string;
+  description: string;
+  icon: LucideIcon;
+}
+
+const SLASH_COMMANDS: SlashCommand[] = [
+  { command: '/wetter', args: '[stadt]', description: 'Wetter abfragen', icon: CloudSun },
+  { command: '/suche', args: '[query]', description: 'Semantische Suche oeffnen', icon: Search },
+  { command: '/code', args: '[sprache]', description: 'Code-Tools oeffnen', icon: Code2 },
+  { command: '/kapsel', args: '[nachricht]', description: 'Schnell eine Zeitkapsel erstellen', icon: Gift },
+  { command: '/recherche', args: '[thema]', description: 'Web-Recherche starten', icon: Globe },
+  { command: '/memory', args: '[query]', description: 'Gedaechtnis durchsuchen', icon: Brain },
+  { command: '/hilfe', args: '', description: 'Alle Commands anzeigen', icon: HelpCircle },
+];
 
 interface Attachment {
   type: 'image' | 'file';
@@ -17,7 +35,70 @@ export default function WelcomeScreen({ onStartChat }: { onStartChat: (msg?: str
   const [inputValue, setInputValue] = useState('');
   const [greetingSubtext, setGreetingSubtext] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [showSlashMenu, setShowSlashMenu] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const setActiveView = useAppStore((s) => s.setActiveView);
+
+  // Slash command filtering
+  const filteredCommands = useMemo(() => {
+    if (!showSlashMenu) return [];
+    const typed = inputValue.toLowerCase();
+    if (typed === '/') return SLASH_COMMANDS;
+    const commandPart = typed.split(' ')[0];
+    return SLASH_COMMANDS.filter(cmd => cmd.command.startsWith(commandPart));
+  }, [inputValue, showSlashMenu]);
+
+  // Detect slash at start of input
+  useEffect(() => {
+    if (inputValue.startsWith('/') && inputValue.indexOf(' ') === -1) {
+      setShowSlashMenu(true);
+      setSelectedIndex(0);
+    } else {
+      setShowSlashMenu(false);
+    }
+  }, [inputValue]);
+
+  // Keep selected index in bounds
+  useEffect(() => {
+    if (selectedIndex >= filteredCommands.length) {
+      setSelectedIndex(Math.max(0, filteredCommands.length - 1));
+    }
+  }, [filteredCommands.length, selectedIndex]);
+
+  // Scroll selected into view
+  useEffect(() => {
+    if (showSlashMenu && menuRef.current) {
+      const items = menuRef.current.querySelectorAll('[data-slash-item]');
+      items[selectedIndex]?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [selectedIndex, showSlashMenu]);
+
+  const selectSlashCommand = (cmd: SlashCommand) => {
+    setShowSlashMenu(false);
+    // Navigate commands
+    const navTargets: Record<string, string> = { '/suche': 'search', '/code': 'code', '/memory': 'memory', '/kapsel': 'capsules' };
+    if (navTargets[cmd.command]) {
+      setInputValue('');
+      setActiveView(navTargets[cmd.command] as any);
+      return;
+    }
+    // Hilfe: just start chat with /hilfe
+    if (cmd.command === '/hilfe') {
+      onStartChat('/hilfe');
+      setInputValue('');
+      return;
+    }
+    // Prefill commands: put command + space in input
+    if (cmd.args) {
+      setInputValue(cmd.command + ' ');
+      inputRef.current?.focus();
+    } else {
+      onStartChat(cmd.command);
+      setInputValue('');
+    }
+  };
 
   // Random greeting questions
   useEffect(() => {
@@ -73,6 +154,28 @@ export default function WelcomeScreen({ onStartChat }: { onStartChat: (msg?: str
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (showSlashMenu && filteredCommands.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIndex(prev => (prev + 1) % filteredCommands.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIndex(prev => (prev - 1 + filteredCommands.length) % filteredCommands.length);
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        selectSlashCommand(filteredCommands[selectedIndex]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowSlashMenu(false);
+        return;
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
@@ -123,7 +226,7 @@ export default function WelcomeScreen({ onStartChat }: { onStartChat: (msg?: str
           </div>
 
           {/* Central Chat Input */}
-          <div className="welcome-chat-input-container">
+          <div className="welcome-chat-input-container" style={{ position: 'relative' }}>
             {/* Attachment Chips */}
             {attachments.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-2 px-2">
@@ -138,6 +241,44 @@ export default function WelcomeScreen({ onStartChat }: { onStartChat: (msg?: str
                     </button>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Slash Command Menu */}
+            {showSlashMenu && filteredCommands.length > 0 && (
+              <div ref={menuRef} className="slash-command-menu" style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 8, background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 -4px 24px rgba(0,0,0,0.4)', zIndex: 50, maxHeight: 380, overflowY: 'auto' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 14px 6px', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent-primary)' }}>
+                  <Slash size={14} />
+                  <span>Befehle</span>
+                </div>
+                {filteredCommands.map((cmd, index) => {
+                  const Icon = cmd.icon;
+                  return (
+                    <button
+                      key={cmd.command}
+                      data-slash-item
+                      style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '10px 14px', border: 'none', background: index === selectedIndex ? 'var(--bg-hover, rgba(255,255,255,0.05))' : 'transparent', cursor: 'pointer', textAlign: 'left', borderLeft: index === selectedIndex ? '2px solid var(--accent-primary)' : '2px solid transparent' }}
+                      onMouseEnter={() => setSelectedIndex(index)}
+                      onClick={() => selectSlashCommand(cmd)}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 8, background: 'rgba(249,171,0,0.1)', color: 'var(--accent-primary)', flexShrink: 0 }}>
+                        <Icon size={18} />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {cmd.command}
+                          {cmd.args && <span style={{ fontWeight: 400, color: 'var(--text-tertiary, #888)', fontSize: 13 }}> {cmd.args}</span>}
+                        </span>
+                        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{cmd.description}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', fontSize: 11, color: 'var(--text-tertiary, #666)', borderTop: '1px solid var(--border-subtle)', background: 'rgba(0,0,0,0.15)' }}>
+                  <kbd style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 20, height: 18, padding: '0 4px', fontSize: 10, background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border-subtle)', borderRadius: 4, color: 'var(--text-secondary)' }}>&uarr;&darr;</kbd> navigieren
+                  <kbd style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 20, height: 18, padding: '0 4px', fontSize: 10, background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border-subtle)', borderRadius: 4, color: 'var(--text-secondary)' }}>&crarr;</kbd> auswaehlen
+                  <kbd style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 20, height: 18, padding: '0 4px', fontSize: 10, background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border-subtle)', borderRadius: 4, color: 'var(--text-secondary)' }}>Esc</kbd> schliessen
+                </div>
               </div>
             )}
 
