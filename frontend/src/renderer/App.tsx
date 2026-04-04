@@ -3,7 +3,7 @@ import { useAppStore, ViewMode } from './store/useAppStore';
 import {
   Sparkles, Settings, Trash2,
   Brain, Lightbulb, Activity, Puzzle, Search, Shield, ChevronDown, ChevronRight, Wrench,
-  PanelLeft, SquarePen, Pin, PinOff, Edit2, Terminal, Compass
+  PanelLeft, SquarePen, Pin, PinOff, Edit2, Terminal, Compass, Package, Mic, ClipboardList, Calendar
 } from 'lucide-react';
 import ChatInterface from './components/ChatInterface';
 import WelcomeScreen from './components/WelcomeScreen';
@@ -31,12 +31,18 @@ import SecretNotes from './components/SecretNotes';
 import AIDiary from './components/AIDiary';
 import ChallengeMode from './components/ChallengeMode';
 import SelfTest from './components/SelfTest';
+import MemoryInspector from './components/MemoryInspector';
+import SkillMarketplace from './components/SkillMarketplace';
+import ListManager from './components/ListManager';
+import CalendarView from './components/CalendarView';
+import VoiceChatModal from './components/VoiceChatModal';
 import './index.css';
 
 export default function App() {
   const initializeSocket = useAppStore((state) => state.initializeSocket);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
+  const [voiceChatOpen, setVoiceChatOpen] = useState(false);
 
   const activeView = useAppStore((state) => state.activeView);
   const setActiveView = useAppStore((state) => state.setActiveView);
@@ -157,6 +163,10 @@ export default function App() {
       case 'diary': return <AIDiary />;
       case 'challenges': return <ChallengeMode onStartChat={(msg) => startNewChat(msg)} />;
       case 'selftest': return <SelfTest />;
+      case 'memory-inspector': return <MemoryInspector />;
+      case 'skill-store': return <SkillMarketplace />;
+      case 'lists': return <ListManager />;
+      case 'calendar': return <CalendarView />;
       default: return <WelcomeScreen onStartChat={startNewChat} />;
     }
   };
@@ -300,17 +310,29 @@ export default function App() {
 
         {/* Bottom Section */}
         <div className="sidebar-bottom-section mt-auto py-2 border-t border-border-subtle">
+          {/* Voice Chat Button */}
+          <div className="px-2 mb-1">
+            <button
+              className={`nav-item w-full voice-chat-nav-btn ${!sidebarOpen ? 'justify-center px-0' : ''}`}
+              onClick={() => setVoiceChatOpen(true)}
+              title="Voice Chat"
+            >
+              <Mic size={20} />
+              {sidebarOpen && <span className="ml-3">Voice Chat</span>}
+            </button>
+          </div>
+
           {/* Tools Group */}
           <div className="tools-group px-2 mb-1">
             <button
-              className={`nav-item w-full ${['memory', 'emotions', 'predictive', 'skills', 'admin', 'code', 'capsules', 'summary', 'chains', 'canvas', 'rag', 'briefing', 'radar', 'timeline', 'notes', 'diary', 'challenges'].includes(activeView) ? 'active' : ''} ${!sidebarOpen ? 'justify-center px-0' : ''}`}
+              className={`nav-item w-full ${['memory', 'emotions', 'predictive', 'skills', 'skill-store', 'admin', 'code', 'capsules', 'summary', 'chains', 'canvas', 'rag', 'briefing', 'radar', 'timeline', 'notes', 'diary', 'challenges', 'lists', 'calendar'].includes(activeView) ? 'active' : ''} ${!sidebarOpen ? 'justify-center px-0' : ''}`}
               onClick={() => sidebarOpen ? setIsToolsOpen(!isToolsOpen) : setActiveView('memory')}
-              title="Werkzeuge"
+              title="Funktionen"
             >
-              <Wrench size={20} />
+              <Puzzle size={20} />
               {sidebarOpen && (
                 <>
-                  <span className="ml-3 flex-1 text-left">Werkzeuge</span>
+                  <span className="ml-3 flex-1 text-left">Funktionen</span>
                   {isToolsOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 </>
               )}
@@ -319,11 +341,15 @@ export default function App() {
             {sidebarOpen && isToolsOpen && (
               <div className="tools-subitems ml-4 mt-1 space-y-1">
                 {[
+                  { id: 'lists', icon: ClipboardList, label: 'Todos & Einkauf' },
+                  { id: 'calendar', icon: Calendar, label: 'Kalender' },
                   { id: 'memory', icon: Brain, label: 'Gedaechtnis' },
+                  { id: 'memory-inspector', icon: Search, label: 'Memory Inspector' },
                   { id: 'emotions', icon: Activity, label: 'Emotionen' },
                   { id: 'predictive', icon: Lightbulb, label: 'Vorhersagen' },
                   { id: 'code', icon: Terminal, label: 'Code-Tools' },
                   { id: 'skills', icon: Puzzle, label: 'Skills & Features' },
+                  { id: 'skill-store', icon: Package, label: 'Skill Marketplace' },
                   { id: 'admin', icon: Shield, label: 'Admin' },
                   { id: 'selftest', icon: Activity, label: 'Self-Test' }
                 ].map(tool => (
@@ -413,6 +439,9 @@ export default function App() {
           </button>
         </div>
       )}
+
+      {/* Voice Chat Modal */}
+      <VoiceChatModal isOpen={voiceChatOpen} onClose={() => setVoiceChatOpen(false)} />
 
       <style>{`
         .app-layout {
@@ -571,6 +600,16 @@ export default function App() {
         .text-text-secondary { color: var(--text-secondary); }
         .text-text-tertiary { color: var(--text-tertiary); }
         .hover\\:bg-bg-hover:hover { background: var(--bg-hover); }
+
+        .voice-chat-nav-btn {
+            background: linear-gradient(135deg, rgba(249,171,0,0.08), rgba(249,171,0,0.02)) !important;
+            border: 1px solid rgba(249,171,0,0.15) !important;
+        }
+        .voice-chat-nav-btn:hover {
+            background: linear-gradient(135deg, rgba(249,171,0,0.15), rgba(249,171,0,0.05)) !important;
+            border-color: rgba(249,171,0,0.3) !important;
+            color: #f9ab00 !important;
+        }
 
         .fade-in { animation: fadeIn 0.2s ease-in; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }

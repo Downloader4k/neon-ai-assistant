@@ -6,9 +6,14 @@ import { adminRoutes } from './adminRoutes';
 import { summaryRoutes } from './summaryRoutes';
 import { ragRoutes } from './ragRoutes';
 import voiceRoutes from './voice';
+import learningRoutes from './learningRoutes';
+import skillStoreRoutes from './skillStoreRoutes';
 import { settingsRoutes } from './settingsRoutes';
 import { memoryRoutes } from './memoryRoutes';
 import { profileRoutes } from './profileRoutes';
+import todoRoutes from './todoRoutes';
+import shoppingRoutes from './shoppingRoutes';
+import calendarRoutes from './calendarRoutes';
 import { authMiddleware, adminAuthMiddleware } from '../middleware/auth';
 import { memoryMonitor } from '../utils/performance';
 import { semanticSearchService } from '../services/search/SemanticSearchService';
@@ -50,12 +55,17 @@ router.get('/search', authMiddleware, async (req, res) => {
 router.use('/proactive', authMiddleware, proactiveRoutes);
 router.use('/upload', authMiddleware, uploadRoutes);
 router.use('/voice', authMiddleware, voiceRoutes);
+router.use('/learning', authMiddleware, learningRoutes);
+router.use('/skill-store', authMiddleware, skillStoreRoutes);
 router.use('/magic', authMiddleware, magicRoutes);
 router.use('/settings', authMiddleware, settingsRoutes);
 router.use('/memory', authMiddleware, memoryRoutes);
 router.use('/profiles', authMiddleware, profileRoutes);
 router.use('/summary', authMiddleware, summaryRoutes);
 router.use('/rag', authMiddleware, ragRoutes);
+router.use('/todos', authMiddleware, todoRoutes);
+router.use('/shopping', authMiddleware, shoppingRoutes);
+router.use('/calendar', authMiddleware, calendarRoutes);
 
 // Code-Ausfuehrung (Admin-geschuetzt)
 router.post('/code/execute', adminAuthMiddleware, async (req, res) => {

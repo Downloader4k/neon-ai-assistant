@@ -1,88 +1,13 @@
 # NEON AI Assistant
 
-> Persoenlicher KI-Assistent mit Hybrid-Routing (Claude + Ollama), 5-Layer Memory System, Magic Features und Entdecken-Seite
+> Persoenlicher Hybrid-KI-Assistent mit 5-Schichten-Gedaechtnis, intelligentem Modell-Routing (Claude + Ollama), Sprachein-/ausgabe, Todo-/Einkaufs-/Kalenderverwaltung und 30+ Features
 
 ![Node](https://img.shields.io/badge/Node-20+-green)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5+-blue)
 ![React](https://img.shields.io/badge/React-18+-61dafb)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
-NEON ist ein vollstaendiger KI-Assistent als Web-App, der Claude AI und lokale LLMs (Ollama/Gemma3) kombiniert. Das System routet Anfragen intelligent zwischen Cloud und lokal, merkt sich Kontext ueber ein 5-schichtiges Gedaechtnissystem und bietet einzigartige Magic Features, die ueber einen normalen Chatbot hinausgehen.
-
----
-
-## Uebersicht
-
-![Feature-Uebersicht](docs/screenshots/feature-overview.svg)
-
----
-
-## Features
-
-### Kern-Features
-
-- **Hybrid AI Router** — 5-Stufen-Orchestrator routet automatisch zwischen Claude (komplex) und Ollama (schnell/privat)
-- **5-Layer Memory** — Working, Short-Term, Long-Term, Episodic, Semantic mit Importance Scoring, Decay und Consolidation
-- **Semantische Suche** — Vektor-basierte Suche ueber alle Konversationen (Ctrl+K)
-- **Netzwerk-Zugriff** — Erreichbar von jedem Geraet im LAN (PC, Handy, Tablet)
-- **Echtzeit-Streaming** — Token-fuer-Token Antworten via WebSocket
-- **Lernmodus** — Interview-Sessions zur Persoenlichkeitsentwicklung
-- **Web-Suche** — DuckDuckGo + Wikipedia Integration
-- **Wetter** — OpenWeatherMap Integration
-- **Wissensbasis (RAG)** — Dokumente importieren und per KI durchsuchen
-- **Emotion Tracking** — Stimmungserkennung in Gespraechen
-- **Admin Panel** — Memory-Management, Extraktion, API-Kosten-Tracking, Performance-Dashboard
-- **Code-Ausfuehrung** — JavaScript, Python, PowerShell in einer Sandbox
-
-### Magic Features
-
-![Magic Features](docs/screenshots/magic-features.svg)
-
-Einzigartige Funktionen, die klassische Chatbots nicht bieten:
-
-| Feature | Beschreibung |
-|---------|-------------|
-| **Morgenbriefing** | Taeglich personalisierte Zusammenfassung mit Wetter, Streaks und Vorschlaegen |
-| **Interessen-Radar** | Canvas-basiertes Radar-Chart zur Visualisierung deiner Interessen in 6 Kategorien |
-| **Gedanken-Zeitstrahl** | Chronologische Timeline deiner Gespraeche, Erinnerungen und Recherchen |
-| **Geheime Notizen** | PIN-geschuetzter privater Notiz-Editor mit Verschluesselung |
-| **KI-Tagebuch** | NEON schreibt automatisch ein Journal ueber eure Gespraeche |
-| **Challenges** | 7 Challenge-Typen (Denk-Raetsel, Quiz, Code, Kreativ, Debatte, Kopfrechnen, Wort-Akrobat) mit Streaks und Badges |
-| **Zeitkapseln** | Nachrichten an dein zukuenftiges Ich planen und automatisch oeffnen |
-| **Agenten-Ketten** | Mehrstufige KI-Workflows: Recherche → Zusammenfassung → Gedaechtnis |
-| **Whiteboard** | Zeichnen, Formen, Text mit Undo/Redo und PNG-Export |
-| **Dateien-RAG** | Lokale Ordner indexieren und semantisch durchsuchen |
-| **Tagesrueckblick** | Automatische Zusammenfassung: Gespraeche, Recherchen, Zeitkapseln des Tages |
-| **Erklaer-Stufen** | Jede Antwort auf 5 Niveaus erklaeren lassen: Kind bis Experte |
-
-### Entdecken-Seite
-
-Eine interaktive Uebersichtsseite (wie bei Microsoft Copilot) mit:
-
-- **Hero-Banner** mit animierten SVG-Illustrationen
-- **Schnellstart-Buttons** fuer haeufige Aktionen
-- **Prompt-Vorschlaege** nach Kategorien (Lernen, Programmieren, Kreativ, Produktivitaet, Analyse, Recherche, Alltag)
-- **Feature-Karten** mit SVG-Illustrationen fuer alle 12 Magic Features
-
-### Weitere Features (v2)
-
-| Feature | Beschreibung |
-|---------|-------------|
-| **Slash-Commands** | `/wetter`, `/suche`, `/code`, `/kapsel`, `/recherche`, `/memory`, `/hilfe` |
-| **Konversations-Export** | Markdown + Text Export |
-| **Themes** | Dark, Light, OLED mit visueller Vorschau |
-| **Drag & Drop** | Bilder, PDFs, Textdateien in den Chat ziehen |
-| **Multi-User** | Profile mit Avataren, separates Gedaechtnis |
-| **Persoenlichkeiten** | Sachlich, Freundlich, Sarkastisch, Lehrer, Pirat |
-| **Konversations-Fork** | Ab jeder Nachricht verzweigen |
-| **PWA** | Installierbar als App mit Push-Notifications und Offline-Support |
-| **Skills & Feature Hub** | Zentraler Ort fuer alle erweiterten Funktionen mit Kategorie-Filter |
-
----
-
-## Architektur
-
-![Architektur](docs/screenshots/architektur.svg)
+NEON ist ein vollstaendiger KI-Assistent als Web-App, der Claude AI und lokale LLMs (Ollama/Gemma3) kombiniert. Das System routet Anfragen intelligent zwischen Cloud und lokal, merkt sich Kontext ueber ein 5-schichtiges Gedaechtnissystem und bietet zahlreiche Funktionen, die ueber einen normalen Chatbot hinausgehen.
 
 ---
 
@@ -91,35 +16,29 @@ Eine interaktive Uebersichtsseite (wie bei Microsoft Copilot) mit:
 ### Voraussetzungen
 
 - [Node.js 20+](https://nodejs.org/)
-- [Ollama](https://ollama.com/download) (fuer lokale KI)
-- Optional: [Docker Desktop](https://www.docker.com/products/docker-desktop/) (fuer PostgreSQL/Redis/ChromaDB)
+- [Anthropic API Key](https://console.anthropic.com/) (fuer Claude)
+- Optional: [Ollama](https://ollama.com/download) (fuer lokale KI)
+- Optional: Python 3.10+ (fuer faster-whisper STT)
 
 ### Installation
 
 ```bash
-# 1. Repository klonen
-git clone https://github.com/Downloader4k/neon-ai-assistant.git
+# Repository klonen
+git clone https://github.com/Neon-OpenClaw/neon-ai-assistant.git
 cd neon-ai-assistant
 
-# 2. Dependencies installieren
+# Dependencies installieren
 npm install
 
-# 3. Backend konfigurieren
+# Backend konfigurieren
 cp backend/.env.example backend/.env
 # -> ANTHROPIC_API_KEY eintragen
 
-# 4. Datenbank initialisieren
-cd backend
-npx prisma generate
-npx prisma migrate deploy
-cd ..
+# Datenbank initialisieren
+npm run prisma:generate
+npm run prisma:migrate
 
-# 5. Ollama Modell laden
-ollama pull gemma3:4b
-# Oder fuer bessere Qualitaet (braucht 12GB VRAM):
-# ollama pull gemma3:12b
-
-# 6. Starten
+# Starten (Backend + Frontend parallel)
 npm run dev
 ```
 
@@ -127,25 +46,125 @@ npm run dev
 
 ```
 Lokal:     http://localhost:5173
-Netzwerk:  http://<deine-ip>:5173   (von jedem Geraet im LAN)
+Netzwerk:  http://<deine-ip>:5173   (jedes Geraet im LAN)
 Backend:   http://localhost:3001
 ```
+
+### Optional: Ollama (lokale KI)
+
+```bash
+ollama pull gemma3:12b   # oder gemma3:4b fuer weniger VRAM
+```
+
+### Optional: Spracherkennung (STT)
+
+```bash
+pip install faster-whisper
+```
+
+---
+
+## Features
+
+### Kern-Funktionen
+
+- **Hybrid AI Router** — 5-Stufen-Orchestrator routet zwischen Claude (komplex) und Ollama (schnell/privat)
+- **5-Schichten-Gedaechtnis** — Working, Short-Term, Long-Term, Episodic, Semantic mit Decay und Konsolidierung
+- **Echtzeit-Streaming** — Token-fuer-Token Antworten via WebSocket
+- **Semantische Suche** — Vektorbasierte Suche ueber alle Konversationen (Ctrl+K)
+- **Multi-User** — Separate Profile mit eigenen Konversationen und Einstellungen
+- **Datei-RAG** — Dokumente importieren (PDF, TXT, MD) und per KI durchsuchen
+- **Code-Ausfuehrung** — JavaScript, Python, PowerShell in Sandbox
+- **Web-Integration** — DuckDuckGo, Wikipedia, OpenWeatherMap
+- **Netzwerk-Zugriff** — Erreichbar von jedem Geraet im LAN
+
+### Slash-Commands
+
+Im Chat `/` tippen um alle Commands zu sehen:
+
+| Command | Beschreibung |
+|---------|-------------|
+| `/todo [aufgabe]` | Neues Todo erstellen (KI kategorisiert automatisch) |
+| `/todos` | Alle offenen Todos anzeigen |
+| `/einkauf [artikel, ...]` | Artikel zur Einkaufsliste hinzufuegen |
+| `/einkaufsliste` | Einkaufsliste anzeigen |
+| `/termin [beschreibung]` | Neuen Termin erstellen (KI kategorisiert automatisch) |
+| `/termine` | Naechste Termine anzeigen |
+| `/kalender` | Kalender oeffnen |
+| `/listen` | Listen-Manager oeffnen |
+| `/wetter [stadt]` | Wetterbericht abrufen |
+| `/suche [query]` | Semantische Suche oeffnen |
+| `/code [sprache]` | Code-Tools oeffnen |
+| `/recherche [thema]` | Web-Recherche starten |
+| `/memory [query]` | Gedaechtnis durchsuchen |
+| `/kapsel [nachricht]` | Zeitkapsel erstellen |
+| `/hilfe` | Alle Commands anzeigen |
+
+### Todos & Einkaufslisten
+
+- **Chat-Steuerung**: `/todo Arzt anrufen` erstellt ein Todo mit automatischer Kategorie (Arbeit, Haushalt, Gesundheit, ...) und Prioritaet
+- **Einkauf per Chat**: `/einkauf 2x Milch, Brot, 500g Mehl` fuegt Artikel hinzu, erkennt Mengen, Kategorien und Laeden
+- **UI-Panel**: Dedizierter Listen-Manager unter Funktionen > Todos & Einkauf
+- **Sub-Commands**: `/todo done Arzt` (erledigen), `/einkauf done Milch` (gekauft), `/einkauf clear` (gekaufte entfernen)
+
+### Kalender / Terminkalender
+
+- **Chat-Steuerung**: `/termin Zahnarzt am Freitag um 10 Uhr` erstellt einen Termin mit automatischer Kategorie und Farbe
+- **Natuerliche Sprache**: "Ich habe einen Arzttermin morgen um 14 Uhr", "Was habe ich heute vor?", "Zeig mir meine Termine"
+- **Datum/Zeit-Erkennung**: Versteht "heute", "morgen", Wochentage, "am 5. April", "14 Uhr", "halb 3"
+- **Auto-Kategorisierung**: Arbeit (blau), Gesundheit (rot), Sport (gruen), Feier (orange), Bildung (lila), Freizeit (pink), etc.
+- **UI-Seite**: Monatsansicht mit Kalender-Grid + Listenansicht unter Funktionen > Kalender
+- **CRUD**: Termine erstellen, bearbeiten (Inline-Edit), loeschen, filtern nach Kategorie
+
+### Voice / Sprache
+
+- **Voice Chat Popup** — Walkie-Talkie-Modus: Mikrofon druecken, sprechen, nochmal druecken zum Senden
+- **Text-to-Speech** — 30+ Neural Voices via Microsoft Edge TTS
+- **Stimmenauswahl** — Vorhoeren und Wechseln direkt im Chat oder Voice-Popup
+- **Auto-Vorlesen** — KI-Antworten werden automatisch vorgelesen (umschaltbar)
+- **Speech-to-Text** — faster-whisper (lokal) oder Web Speech API (Browser-Fallback)
+
+### Weitere Funktionen
+
+| Feature | Beschreibung |
+|---------|-------------|
+| **Entdecken-Seite** | Startseite mit Quick-Start-Prompts und Feature-Karten |
+| **Persoenlichkeiten** | 5 Modi: Freundlich, Sachlich, Sarkastisch, Lehrer, Pirat |
+| **Morgenbriefing** | Tagesstart mit Wetter, Zusammenfassung und Vorschlaegen |
+| **Challenge Mode** | Raetsel, Quiz, Code-Challenges, Debatten, Kreativ-Aufgaben |
+| **Thought Timeline** | Chronologische Ansicht aller Konversationen |
+| **AI Diary** | Automatische Tagebuch-Generierung aus Gespraechen |
+| **Secret Notes** | PIN-geschuetzte verschluesselte Notizen |
+| **Canvas/Whiteboard** | Zeichenflaeche mit Undo/Redo und PNG-Export |
+| **Zeitkapseln** | Nachrichten an das zukuenftige Ich |
+| **Emotionstracking** | Sentiment-Analyse in Gespraechen |
+| **Skill Marketplace** | Erweiterbare Skills und Plugins |
+| **Memory Inspector** | Gedaechtnis-Visualisierung und -Verwaltung |
+| **Interessen-Radar** | Canvas-basiertes Radar-Chart deiner Interessen |
+| **Agenten-Ketten** | Mehrstufige KI-Workflows (Recherche, Zusammenfassung, ...) |
+| **Erklaer-Stufen** | Jede Antwort auf 5 Niveaus: Kind bis Experte |
+| **Tagesrueckblick** | Automatische Zusammenfassung des Tages |
+| **Konversations-Fork** | Ab jeder Nachricht verzweigen |
+| **Lernmodus** | Interview-Sessions zur Persoenlichkeitsentwicklung |
+| **Admin Panel** | Systemueberwachung, API-Kosten, Performance-Dashboard |
+| **Themes** | Dark (Standard), Light, OLED |
+| **Drag & Drop** | Bilder, PDFs, Textdateien in den Chat ziehen |
 
 ---
 
 ## Tech Stack
 
-### Frontend (Browser)
-React 18 | TypeScript | Vite | Tailwind CSS | Zustand | Socket.io | Framer Motion
-
-### Backend
-Node.js | Express | TypeScript | Prisma | Socket.io | Winston
-
-### KI & ML
-Claude (Anthropic SDK) | Ollama/Gemma3 | Transformers.js (Embeddings) | ChromaDB (Vektoren)
-
-### Infrastruktur
-SQLite (Default) | PostgreSQL (Optional) | Redis (Optional) | Docker Compose
+| Bereich | Technologie |
+|---------|------------|
+| **Backend** | Node.js, Express, TypeScript, Socket.io, Winston |
+| **Frontend** | React 18, Vite, Tailwind CSS, Zustand, Framer Motion |
+| **Datenbank** | SQLite (Prisma ORM) |
+| **Vektor-DB** | ChromaDB + sqlite-vec |
+| **KI Cloud** | Anthropic Claude API |
+| **KI Lokal** | Ollama (Gemma3, Llama, etc.) |
+| **TTS** | Microsoft Edge TTS (msedge-tts) |
+| **STT** | faster-whisper (Python) + Web Speech API |
+| **Optional** | Redis, Docker Compose |
 
 ---
 
@@ -153,41 +172,33 @@ SQLite (Default) | PostgreSQL (Optional) | Redis (Optional) | Docker Compose
 
 ```
 neon-ai-assistant/
-├── backend/                # Express.js Server (Port 3001)
+├── backend/
 │   ├── src/
-│   │   ├── api/            # REST Routes + WebSocket
-│   │   ├── services/       # 35+ Business Logic Services
-│   │   │   ├── router/     # AI Routing (5-Stage Orchestrator)
-│   │   │   ├── memory/     # 5-Layer Memory System
-│   │   │   ├── search/     # Semantische Suche (ChromaDB)
-│   │   │   ├── claude/     # Claude API
-│   │   │   ├── ollama/     # Ollama Integration
-│   │   │   └── ...
-│   │   └── utils/
-│   └── prisma/             # Datenbank-Schema
-│
-├── frontend/               # React Web-App (Vite)
-│   ├── src/
-│   │   ├── components/     # 40+ UI Komponenten
-│   │   │   ├── DiscoverPage.tsx     # Entdecken-Seite
-│   │   │   ├── SkillStore.tsx       # Skills & Feature Hub
-│   │   │   ├── MorningBriefing.tsx  # Morgenbriefing
-│   │   │   ├── PersonalityRadar.tsx # Interessen-Radar
-│   │   │   ├── ThoughtTimeline.tsx  # Gedanken-Zeitstrahl
-│   │   │   ├── SecretNotes.tsx      # Geheime Notizen
-│   │   │   ├── AIDiary.tsx          # KI-Tagebuch
-│   │   │   ├── ChallengeMode.tsx    # Challenges
-│   │   │   └── ...
-│   │   ├── store/          # Zustand State Management
-│   │   ├── services/       # STT, TTS
-│   │   └── styles/
-│   └── vite.config.ts
-│
-├── shared/types/           # Geteilte TypeScript-Typen
-├── docker/                 # Docker Compose (PostgreSQL, Redis, ChromaDB)
-├── docs/                   # Dokumentation & Screenshots
-├── scripts/                # Wartungs-Skripte
-└── KONZEPT_V2.md           # Detailliertes Konzeptdokument
+│   │   ├── api/              # REST Routes + WebSocket
+│   │   ├── services/
+│   │   │   ├── router/       # Hybrid AI Router (5-Stufen)
+│   │   │   ├── memory/       # 5-Schichten-Gedaechtnis
+│   │   │   ├── search/       # Semantische Suche
+│   │   │   ├── claude/       # Claude API Service
+│   │   │   ├── ollama/       # Ollama Service
+│   │   │   ├── skills/       # Skill Processor + Commands
+│   │   │   ├── voice/        # TTS + STT Services
+│   │   │   ├── db/           # Todo, Shopping, User Services
+│   │   │   ├── magic/        # Spezial-Features
+│   │   │   └── web/          # Web-Suche, Scraping
+│   │   ├── middleware/       # Auth, Rate Limiting
+│   │   └── utils/            # Logger, Helpers
+│   ├── prisma/               # Schema + Migrations
+│   └── scripts/              # Whisper STT Script
+├── frontend/
+│   ├── src/renderer/
+│   │   ├── components/       # 40+ React-Komponenten
+│   │   ├── store/            # Zustand State Management
+│   │   ├── services/         # Audio Services
+│   │   └── App.tsx           # Haupt-App
+│   └── public/               # Statische Assets
+├── docs/                     # Dokumentation
+└── package.json              # Workspace Root
 ```
 
 ---
@@ -196,13 +207,13 @@ neon-ai-assistant/
 
 | Schicht | Lebensdauer | Zweck |
 |---------|-------------|-------|
-| **Working** | 1-4 Stunden | Aktive Session |
-| **Short-Term** | 1-7 Tage | Kuerzliche Infos |
-| **Long-Term** | Permanent | Wichtige Fakten |
-| **Episodic** | Variabel | Ereignisse |
+| **Working** | 1-4 Stunden | Aktive Session, Kontext |
+| **Short-Term** | 1-7 Tage | Kuerzliche Informationen |
+| **Long-Term** | Permanent | Wichtige Fakten ueber den Nutzer |
+| **Episodic** | Variabel | Ereignisse und Erlebnisse |
 | **Semantic** | Permanent | Strukturiertes Wissen |
 
-Automatische Consolidation, Importance Scoring, Memory Decay und Promotion.
+Automatische Consolidation, Importance Scoring, Memory Decay und Promotion zwischen Schichten.
 
 ---
 
@@ -210,7 +221,7 @@ Automatische Consolidation, Importance Scoring, Memory Decay und Promotion.
 
 5-Stufen Entscheidungsprozess:
 
-1. **Domain-Klassifikation** — Emotional? → Ollama. Komplex? → weiter
+1. **Domain-Klassifikation** — Emotional/Einfach? → Ollama. Komplex? → weiter
 2. **Komplexitaetsbewertung** — Score < 70? → Ollama
 3. **Self-Confidence** — Ollama sicher genug? → Ollama
 4. **Depth Threshold** — Tiefe noetig? → Claude
@@ -230,127 +241,85 @@ COMPLEXITY_THRESHOLD=70
 ### Backend (.env)
 
 ```env
+# Pflicht
+ANTHROPIC_API_KEY=sk-ant-...
+
 # Server
 PORT=3001
 HOST=0.0.0.0
 
-# KI
-ANTHROPIC_API_KEY=sk-ant-api03-...
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=gemma3:4b
-
 # Datenbank
 DATABASE_URL="file:./prisma/neon.db"
+
+# Lokale KI (optional)
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=gemma3:12b
 
 # Router
 ENABLE_ORCHESTRATOR=true
 CLAUDE_THRESHOLD=0.85
+COMPLEXITY_THRESHOLD=70
+
+# Sicherheit (optional)
+API_ACCESS_TOKEN=              # API-Token fuer Netzwerk-Zugriff
+ADMIN_ACCESS_TOKEN=            # Admin-Token
+ENCRYPTION_KEY=                # 32 Zeichen fuer verschluesselte Notizen
+
+# Optional
+REDIS_URL=redis://localhost:6379
+CHROMA_URL=http://localhost:8000
 ```
 
 ---
 
-## Entwicklung
+## NPM Scripts
 
 ```bash
-# Alles starten (Backend + Frontend parallel)
-npm run dev
-
-# Nur Backend
-npm run dev:backend
-
-# Nur Frontend
-npm run dev:frontend
-
-# Build (Production)
-npm run build
-
-# Datenbank
-cd backend
-npx prisma studio       # Visual DB Browser
-npx prisma migrate dev  # Neue Migration
+npm run dev              # Backend + Frontend starten
+npm run dev:backend      # Nur Backend (Port 3001)
+npm run dev:frontend     # Nur Frontend (Port 5173)
+npm run build            # Production Build
+npm run prisma:generate  # Prisma Client generieren
+npm run prisma:migrate   # Datenbank migrieren
+npm run prisma:studio    # Prisma Studio GUI
 ```
 
 ---
 
 ## API
 
-### REST (Auszug)
+### REST Endpunkte (Auszug)
 
-```
-GET  /api/health                    # System-Status
-GET  /api/search?q=query            # Semantische Suche
-GET  /api/memory/:userId            # Erinnerungen
-POST /api/memory/:userId/retrieve   # Relevante Memories
-POST /api/code/execute               # Code ausfuehren (JS/Python/PS)
-GET  /api/admin/stats               # System-Statistiken
-GET  /api/admin/usage               # API-Kosten
-GET  /api/admin/performance          # Performance-Metriken
-POST /api/magic/capsules             # Zeitkapsel erstellen
-GET  /api/magic/capsules/:userId     # Zeitkapseln abrufen
-GET  /api/summary/daily              # Tages-Zusammenfassung
-POST /api/rag/index                  # Ordner indexieren (RAG)
-GET  /api/rag/search?q=query         # RAG-Suche
-GET  /api/rag/status                 # RAG-Status
-```
+| Route | Beschreibung |
+|-------|-------------|
+| `GET /api/health` | System-Status |
+| `GET /api/search?q=...` | Semantische Suche |
+| `POST /api/code/execute` | Code ausfuehren (JS/Python/PS) |
+| `GET /api/voice/tts/voices` | Verfuegbare TTS-Stimmen |
+| `POST /api/voice/tts/synthesize` | Text-to-Speech |
+| `GET /api/todos/:userId` | Todos abrufen |
+| `POST /api/todos` | Todo erstellen |
+| `GET /api/shopping/:userId` | Einkaufsliste |
+| `POST /api/shopping/items` | Einkaufsartikel hinzufuegen |
+| `GET /api/calendar/:userId` | Kalender-Termine |
+| `GET /api/calendar/:userId/range` | Termine nach Zeitraum |
+| `POST /api/calendar` | Termin erstellen |
+| `GET /api/memory/:userId` | Erinnerungen |
+| `GET /api/profiles` | Benutzerprofile |
+| `GET /api/admin/stats` | System-Statistiken |
+| `POST /api/rag/index` | Ordner indexieren (RAG) |
 
-### WebSocket
+### WebSocket Events
 
-```typescript
-// Nachricht senden
-socket.emit('user-message', { message, conversationId, userId })
-
-// Streaming-Antwort empfangen
-socket.on('ai-response-chunk', ({ chunk, provider }))
-socket.on('ai-response-complete', ({ conversationId }))
-```
-
----
-
-## Status der Phasen
-
-### Alle Phasen abgeschlossen
-
-| Phase | Feature | Status |
-|-------|---------|--------|
-| 0-4 | Infrastruktur, Chat, Datenbank, AI-Integration | Fertig |
-| 5 | Semantische Suche (ChromaDB + Embeddings) | Fertig |
-| 6 | 5-Layer Memory System (Consolidation, Decay, Scoring) | Fertig |
-| 7 | Admin Panel (Memory-Management, Extraktion, API-Kosten, Performance) | Fertig |
-| 8 | Voice I/O (Browser Web Speech API: STT + TTS) | Fertig |
-| 9 | Proaktive KI (Kontext-Monitoring, Vorschlaege) | Fertig |
-| 10 | Lernmodus (Interview-Sessions, Persoenlichkeit) | Fertig |
-| 11 | Settings (KI-Verhalten, Privacy, Appearance) | Fertig |
-| 12 | Code-Tools (JS/Python/PowerShell Sandbox + UI) | Fertig |
-| 13 | Plugin-System (Skill-Store, dynamisches Loading) | Fertig |
-| 14 | Web-Suche & Skills (DuckDuckGo + Wikipedia + Wetter + Auto-Learning) | Fertig |
-| 15 | Performance (Dashboard, MemoryMonitor, PerformanceMonitor) | Fertig |
-| 16 | Security (Token-Auth, Rate-Limiting, XSS, Helmet, CORS) | Fertig |
-| 17 | Magic Features (Emotion Tracking, Zeitkapseln, Predictive Assistant) | Fertig |
-| 18 | Magic Features v2 (Morgenbriefing, Radar, Timeline, Notizen, Tagebuch, Challenges) | Fertig |
-| 19 | Entdecken-Seite & Feature Hub (SVG-Illustrationen, Prompt-Vorschlaege) | Fertig |
-
-### Naechste Schritte
-
-- Responsive Design (Mobile-Optimierung)
-- Multi-Modell-Routing (Code-Modell + Chat-Modell)
-- CI/CD Pipeline (GitHub Actions)
-- Unit Tests fuer Kern-Services
-- Whisper STT Integration (Backend)
-
----
-
-## Dokumentation
-
-- [KONZEPT_V2.md](./KONZEPT_V2.md) — Vollstaendiges Konzept mit Architektur, Audit und Roadmap
-- [SETUP.md](./SETUP.md) — Detaillierte Setup-Anleitung
-- [AGENT_RULES.md](./AGENT_RULES.md) — Verhaltensregeln des Assistenten
+| Event | Richtung | Beschreibung |
+|-------|----------|-------------|
+| `user-message` | Client → Server | Nachricht senden |
+| `ai-response-chunk` | Server → Client | Streaming-Token |
+| `ai-response-complete` | Server → Client | Antwort fertig |
+| `typing-indicator` | Server → Client | KI denkt nach |
 
 ---
 
 ## Lizenz
 
 MIT
-
----
-
-Gebaut von Downloader4k mit Claude AI.

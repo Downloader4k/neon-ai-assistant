@@ -329,6 +329,84 @@ model Task {
   @@map("tasks")
 }
 
+// ─────────────────────────────────────────────────────────────
+// TODO & SHOPPING LISTS
+// ─────────────────────────────────────────────────────────────
+
+model TodoItem {
+  id          String    @id @default(uuid())
+  userId      String
+  title       String
+  description String?
+  category    String    @default("Allgemein")
+  priority    String    @default("medium")   // low, medium, high, urgent
+  status      String    @default("open")     // open, in_progress, done
+  dueDate     DateTime?
+  completedAt DateTime?
+  aiCategorized Boolean @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, category])
+  @@map("todo_items")
+}
+
+model ShoppingItem {
+  id          String   @id @default(uuid())
+  userId      String
+  name        String
+  quantity    String?
+  category    String   @default("Sonstiges")   // Obst & Gemuese, Milchprodukte, Fleisch, Getranke, etc.
+  store       String?                           // REWE, ALDI, LIDL, DM, etc.
+  isPurchased Boolean  @default(false)
+  listId      String?
+  aiSorted    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  list ShoppingList? @relation(fields: [listId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([userId, isPurchased])
+  @@index([listId])
+  @@map("shopping_items")
+}
+
+model ShoppingList {
+  id        String         @id @default(uuid())
+  userId    String
+  name      String
+  store     String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  items     ShoppingItem[]
+
+  @@index([userId])
+  @@map("shopping_lists")
+}
+
+model CalendarEvent {
+  id          String    @id @default(uuid())
+  userId      String
+  title       String
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  location    String?
+  category    String    @default("Allgemein")
+  color       String?   @default("#f9ab00")
+  isAllDay    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([userId, startDate])
+  @@index([category])
+  @@map("calendar_events")
+}
+
 model Plugin {
   id          String   @id @default(uuid())
   name        String   @unique

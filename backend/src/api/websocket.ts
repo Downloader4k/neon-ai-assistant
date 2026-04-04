@@ -110,6 +110,8 @@ export const sendProgressToUser = (userId: string, data: { progress: number; sta
 
 import { socketService } from '../services/socket/SocketService';
 import { getUserPersonality } from './settingsRoutes';
+import { voiceOrchestrator } from '../services/voice/VoiceSessionOrchestrator';
+import { aiRouter as aiRouterInstance } from '../services/router/AIRouter';
 
 export function initializeWebSocket(httpServer: HTTPServer): SocketIOServer {
     const io = socketService.initialize(httpServer, {
@@ -194,7 +196,7 @@ export function initializeWebSocket(httpServer: HTTPServer): SocketIOServer {
                 let skillPayload = '';
 
                 try {
-                    const skillResult = await skillProcessor.process(message);
+                    const skillResult = await skillProcessor.process(message, userId);
                     if (skillResult.context) {
                         skillContext = skillResult.context;
                         logger.info('SkillProcessor: Added context to prompt');
@@ -500,9 +502,10 @@ ${nextQuestion.isStageEnd ? '\n[Nach dieser Antwort: Fasse die Stufe kurz zusamm
                     // socket.emit('ai-response-chunk', { chunk, provider: usedProvider });
                 }
 
+                // Skill payload (raw JSON) nicht mehr an die Antwort anhaengen
+                // Die relevanten Infos stehen bereits im Antworttext
                 if (skillPayload) {
-                    fullResponse += '\n' + skillPayload;
-                    logger.info('Appended skill payload to response');
+                    logger.info('Skill payload available but not appended to response');
                 }
 
                 // GUARDRAILS: Validate response BEFORE saving/sending
@@ -565,10 +568,18 @@ ${nextQuestion.isStageEnd ? '\n[Nach dieser Antwort: Fasse die Stufe kurz zusamm
                     // Continue anyway - don't block on validation errors
                 }
 
+                // Clean response: remove stray CJK/special chars at start
+                fullResponse = fullResponse.replace(/^[\u2E80-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\u{20000}-\u{2FA1F}]+/u, '').trim();
+
+                // Fix broken backticks from Gemma (´´´ → ```, ∣ → |)
+                fullResponse = fullResponse.replace(/[´`]{3}/g, '```').replace(/∣/g, '|');
+
                 // NOW stream the validated response to user
+                // Use Array.from to handle multi-byte chars (emojis) safely
+                const chars = Array.from(fullResponse);
                 const chunkSize = 50;
-                for (let i = 0; i < fullResponse.length; i += chunkSize) {
-                    const chunk = fullResponse.substring(i, i + chunkSize);
+                for (let i = 0; i < chars.length; i += chunkSize) {
+                    const chunk = chars.slice(i, i + chunkSize).join('');
                     socket.emit('ai-response-chunk', { chunk, provider });
                     await new Promise(resolve => setTimeout(resolve, 10));
                 }
@@ -580,6 +591,22 @@ ${nextQuestion.isStageEnd ? '\n[Nach dieser Antwort: Fasse die Stufe kurz zusamm
                     content: fullResponse,
                     modelUsed: provider,
                 });
+
+                // Log routing decision for learning orchestrator
+                try {
+                    await aiRouterInstance.logRoutingDecision({
+                        userId,
+                        conversationId: currentConversationId,
+                        messageId: aiMessage.id,
+                        domain: 'knowledge', // Will be improved when classification is exposed
+                        chosenProvider: provider,
+                        complexityScore: 0.5,
+                        selfConfidence: 0.5,
+                        responseTimeMs: Date.now() - ((userMessage as any).createdAt?.getTime?.() || userMessage.timestamp?.getTime?.() || Date.now()),
+                    });
+                } catch (err) {
+                    logger.warn('Failed to log routing decision', { err });
+                }
 
                 // Index AI message for semantic search (non-blocking)
                 semanticSearchService.indexMessage(
@@ -643,6 +670,13 @@ ${nextQuestion.isStageEnd ? '\n[Nach dieser Antwort: Fasse die Stufe kurz zusamm
                     provider,
                     responseLength: fullResponse.length,
                 });
+
+                // Voice Pipeline: Auto-TTS if voice session is active
+                const voiceSession = voiceOrchestrator.getSession(socket.id);
+                if (voiceSession && voiceSession.config.ttsEnabled) {
+                    voiceOrchestrator.synthesizeAndStream(socket.id, fullResponse, socket)
+                        .catch(err => logger.error('Auto-TTS failed', { err }));
+                }
 
                 // Generate Title (Async) for new conversations
                 if (history.length <= 2) { // User message + AI message = 2
@@ -847,8 +881,77 @@ ${nextQuestion.isStageEnd ? '\n[Nach dieser Antwort: Fasse die Stufe kurz zusamm
             }
         });
 
+        // =============================================
+        // VOICE PIPELINE EVENTS
+        // =============================================
+
+        /**
+         * Start a voice session for this socket
+         */
+        socket.on('voice-session-start', async (data: { userId: string; config?: any }) => {
+            try {
+                if (!voiceOrchestrator.getStatus().initialized) {
+                    await voiceOrchestrator.initialize();
+                }
+                voiceOrchestrator.createSession(socket, data.userId, data.config);
+            } catch (error) {
+                logger.error('Failed to start voice session', { error, socketId: socket.id });
+                socket.emit('error', { message: 'Voice-Session konnte nicht gestartet werden', code: 'VOICE_ERROR' });
+            }
+        });
+
+        /**
+         * Receive audio chunk from client (binary PCM data)
+         */
+        socket.on('voice-audio-chunk', (data: Buffer | ArrayBuffer) => {
+            try {
+                const buffer = Buffer.isBuffer(data) ? data : Buffer.from(data);
+                voiceOrchestrator.processAudioChunk(socket.id, buffer);
+            } catch (error) {
+                logger.error('Failed to process audio chunk', { error, socketId: socket.id });
+            }
+        });
+
+        /**
+         * Client requests manual transcription (non-VAD mode)
+         */
+        socket.on('voice-transcribe-buffer', async () => {
+            try {
+                await voiceOrchestrator.transcribeBuffer(socket.id, socket);
+            } catch (error) {
+                logger.error('Failed to transcribe buffer', { error, socketId: socket.id });
+            }
+        });
+
+        /**
+         * Client requests TTS for text
+         */
+        socket.on('voice-tts-request', async (data: { text: string }) => {
+            try {
+                await voiceOrchestrator.synthesizeAndStream(socket.id, data.text, socket);
+            } catch (error) {
+                logger.error('Failed TTS request', { error, socketId: socket.id });
+            }
+        });
+
+        /**
+         * Update voice session config
+         */
+        socket.on('voice-session-update', (data: { config: any }) => {
+            voiceOrchestrator.updateSession(socket.id, data.config);
+        });
+
+        /**
+         * End voice session
+         */
+        socket.on('voice-session-end', () => {
+            voiceOrchestrator.endSession(socket.id);
+        });
+
         // Handle disconnect
         socket.on('disconnect', () => {
+            // Clean up voice session
+            voiceOrchestrator.endSession(socket.id);
             logger.info('Client disconnected', { socketId: socket.id });
         });
     });

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Sparkles, Zap, MessageSquare, FileText, Image as ImageIcon, Send, X, CloudSun, Search, Code2, Gift, Globe, Brain, HelpCircle, Slash, type LucideIcon } from 'lucide-react';
+import { Sparkles, Zap, MessageSquare, FileText, Image as ImageIcon, Send, X, CloudSun, Search, Code2, Gift, Globe, Brain, HelpCircle, Slash, ListTodo, ShoppingCart, ClipboardList, Calendar, type LucideIcon } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { AttachmentMenu } from './AttachmentMenu';
 import { EmojiMenu } from './EmojiMenu';
@@ -19,6 +19,14 @@ const SLASH_COMMANDS: SlashCommand[] = [
   { command: '/kapsel', args: '[nachricht]', description: 'Schnell eine Zeitkapsel erstellen', icon: Gift },
   { command: '/recherche', args: '[thema]', description: 'Web-Recherche starten', icon: Globe },
   { command: '/memory', args: '[query]', description: 'Gedaechtnis durchsuchen', icon: Brain },
+  { command: '/todo', args: '[aufgabe]', description: 'Todo erstellen', icon: ListTodo },
+  { command: '/todos', args: '', description: 'Alle offenen Todos anzeigen', icon: ListTodo },
+  { command: '/einkauf', args: '[artikel, ...]', description: 'Einkaufsliste: Artikel hinzufuegen', icon: ShoppingCart },
+  { command: '/einkaufsliste', args: '', description: 'Einkaufsliste anzeigen', icon: ShoppingCart },
+  { command: '/termin', args: '[beschreibung]', description: 'Termin erstellen', icon: Calendar },
+  { command: '/termine', args: '', description: 'Naechste Termine anzeigen', icon: Calendar },
+  { command: '/kalender', args: '', description: 'Kalender oeffnen', icon: Calendar },
+  { command: '/listen', args: '', description: 'Listen-Manager oeffnen', icon: ClipboardList },
   { command: '/hilfe', args: '', description: 'Alle Commands anzeigen', icon: HelpCircle },
 ];
 
@@ -78,7 +86,7 @@ export default function WelcomeScreen({ onStartChat }: { onStartChat: (msg?: str
   const selectSlashCommand = (cmd: SlashCommand) => {
     setShowSlashMenu(false);
     // Navigate commands
-    const navTargets: Record<string, string> = { '/suche': 'search', '/code': 'code', '/memory': 'memory', '/kapsel': 'capsules' };
+    const navTargets: Record<string, string> = { '/suche': 'search', '/code': 'code', '/memory': 'memory', '/kapsel': 'capsules', '/listen': 'lists' };
     if (navTargets[cmd.command]) {
       setInputValue('');
       setActiveView(navTargets[cmd.command] as any);
@@ -220,7 +228,7 @@ export default function WelcomeScreen({ onStartChat }: { onStartChat: (msg?: str
           <div className="welcome-header-modern">
             <div className="greeting-row">
               <Sparkles size={32} className="greeting-icon" />
-              <span className="greeting-text">Hallo {userName}!</span>
+              <span className="greeting-text">Hallo {userName}</span>
             </div>
             <h2 className="main-question fade-in">{greetingSubtext}</h2>
           </div>
@@ -246,7 +254,7 @@ export default function WelcomeScreen({ onStartChat }: { onStartChat: (msg?: str
 
             {/* Slash Command Menu */}
             {showSlashMenu && filteredCommands.length > 0 && (
-              <div ref={menuRef} className="slash-command-menu" style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 8, background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 -4px 24px rgba(0,0,0,0.4)', zIndex: 50, maxHeight: 380, overflowY: 'auto' }}>
+              <div ref={menuRef} className="slash-command-menu" style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 8, background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 -4px 24px rgba(0,0,0,0.4)', zIndex: 50, maxHeight: 520, overflowY: 'auto' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 14px 6px', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent-primary)' }}>
                   <Slash size={14} />
                   <span>Befehle</span>

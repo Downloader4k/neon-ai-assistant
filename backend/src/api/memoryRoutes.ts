@@ -224,4 +224,192 @@ router.post('/:userId/import', async (req, res) => {
     }
 });
 
+// GET /api/memory/:userId/timeline
+// Get memories as timeline data (grouped by date)
+router.get('/:userId/timeline', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const limit = parseInt(req.query.limit as string) || 200;
+
+        const memories = await prisma.memoryEntry.findMany({
+            where: { userId, isActive: true },
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+            select: {
+                id: true,
+                type: true,
+                content: true,
+                importanceScore: true,
+                accessCount: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+
+        // Group by date
+        const timeline: Record<string, any[]> = {};
+        for (const m of memories) {
+            const dateKey = m.createdAt.toISOString().split('T')[0];
+            if (!timeline[dateKey]) timeline[dateKey] = [];
+            timeline[dateKey].push({
+                ...m,
+                type: m.type.toLowerCase(),
+            });
+        }
+
+        res.json(timeline);
+    } catch (error) {
+        logger.error('Failed to fetch timeline', error);
+        res.status(500).json({ error: 'Failed to fetch timeline' });
+    }
+});
+
+// GET /api/memory/:userId/decay
+// Get decay information for all memories
+router.get('/:userId/decay', async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        const memories = await prisma.memoryEntry.findMany({
+            where: { userId, isActive: true },
+            orderBy: { createdAt: 'desc' },
+            take: 200,
+            select: {
+                id: true,
+                type: true,
+                content: true,
+                importanceScore: true,
+                accessCount: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+
+        // Calculate decay for each memory
+        const HALF_LIVES: Record<string, number> = {
+            INSTRUCTION: Infinity,
+            FACT: 60,        // 60 days
+            PREFERENCE: 90,  // 90 days
+            KNOWLEDGE: 120,  // 120 days
+            PROJECT: 30,     // 30 days
+        };
+
+        const now = Date.now();
+        const decayData = memories.map(m => {
+            const ageMs = now - m.createdAt.getTime();
+            const ageDays = ageMs / (1000 * 60 * 60 * 24);
+            const halfLife = HALF_LIVES[m.type] || 60;
+            const decayFactor = halfLife === Infinity ? 1.0 : Math.pow(0.5, ageDays / halfLife);
+            const effectiveScore = m.importanceScore * decayFactor;
+
+            return {
+                id: m.id,
+                type: m.type.toLowerCase(),
+                content: m.content.substring(0, 100),
+                originalImportance: m.importanceScore,
+                currentImportance: Math.round(effectiveScore * 100) / 100,
+                decayFactor: Math.round(decayFactor * 100) / 100,
+                ageDays: Math.round(ageDays),
+                halfLife,
+                accessCount: m.accessCount,
+            };
+        });
+
+        res.json(decayData);
+    } catch (error) {
+        logger.error('Failed to fetch decay data', error);
+        res.status(500).json({ error: 'Failed to fetch decay data' });
+    }
+});
+
+// GET /api/memory/:userId/heatmap
+// Get importance heatmap data (importance over time)
+router.get('/:userId/heatmap', async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        const memories = await prisma.memoryEntry.findMany({
+            where: { userId, isActive: true },
+            orderBy: { createdAt: 'asc' },
+            select: {
+                type: true,
+                importanceScore: true,
+                createdAt: true,
+            },
+        });
+
+        // Group by week and type for heatmap
+        const heatmap: Record<string, Record<string, { count: number; avgImportance: number }>> = {};
+
+        for (const m of memories) {
+            const date = m.createdAt;
+            // Get week start (Monday)
+            const day = date.getDay();
+            const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+            const weekStart = new Date(date.setDate(diff)).toISOString().split('T')[0];
+            const type = m.type.toLowerCase();
+
+            if (!heatmap[weekStart]) heatmap[weekStart] = {};
+            if (!heatmap[weekStart][type]) heatmap[weekStart][type] = { count: 0, avgImportance: 0 };
+
+            const cell = heatmap[weekStart][type];
+            cell.avgImportance = (cell.avgImportance * cell.count + m.importanceScore) / (cell.count + 1);
+            cell.count++;
+        }
+
+        res.json(heatmap);
+    } catch (error) {
+        logger.error('Failed to fetch heatmap', error);
+        res.status(500).json({ error: 'Failed to fetch heatmap' });
+    }
+});
+
+// GET /api/memory/:userId/relations
+// Get memory relations (knowledge graph)
+router.get('/:userId/relations', async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        const memories = await prisma.memoryEntry.findMany({
+            where: { userId, isActive: true },
+            select: { id: true, type: true, content: true, importanceScore: true },
+            take: 100,
+            orderBy: { importanceScore: 'desc' },
+        });
+
+        // Try to get relations from MemoryRelation table
+        let relations: any[] = [];
+        try {
+            relations = await (prisma as any).memoryRelation.findMany({
+                where: {
+                    OR: [
+                        { sourceId: { in: memories.map((m: any) => m.id) } },
+                        { targetId: { in: memories.map((m: any) => m.id) } },
+                    ],
+                },
+            });
+        } catch {
+            // MemoryRelation table might not exist
+        }
+
+        res.json({
+            nodes: memories.map(m => ({
+                id: m.id,
+                type: m.type.toLowerCase(),
+                label: m.content.substring(0, 50),
+                importance: m.importanceScore,
+            })),
+            edges: relations.map((r: any) => ({
+                source: r.sourceId,
+                target: r.targetId,
+                type: r.relationType,
+                strength: r.strength,
+            })),
+        });
+    } catch (error) {
+        logger.error('Failed to fetch relations', error);
+        res.status(500).json({ error: 'Failed to fetch relations' });
+    }
+});
+
 export const memoryRoutes = router;

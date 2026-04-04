@@ -6,6 +6,8 @@ import { prisma } from '../db/prisma';
 import { capabilityScorer } from './CapabilityScorer';
 import { claudeBackendService } from './ClaudeBackendService';
 import { spellCheckService } from '../spellcheck/SpellCheckService';
+import { routingLogger } from './RoutingLogger';
+import { banditSelector } from './BanditSelector';
 
 export type AIProvider = 'claude' | 'ollama' | 'hybrid';
 
@@ -73,6 +75,13 @@ export class AIRouter {
         };
 
         this.loadSettings().catch(err => logger.error('Failed to load initial settings', { err }));
+
+        // Initialize learning system
+        routingLogger.loadHistory().then(() => {
+            banditSelector.updateFromStats();
+            logger.info('[AIRouter] Learning system initialized');
+        }).catch(err => logger.error('Failed to init learning system', { err }));
+
         logger.info('AI Router initialized', this.config);
     }
 
@@ -395,6 +404,12 @@ ${localRagBlock}
 
                 logger.info('Hard rule: No Claude for this domain', { domain: classification.domain });
                 return await this.routeToProvider('ollama', message, conversationHistory, systemPromptWithRag);
+            }
+
+            // BANDIT: Check if learning system has a recommendation
+            const banditRecommendation = banditSelector.recommend(classification.domain);
+            if (banditRecommendation) {
+                logger.info(`[AIRouter] Bandit recommends: ${banditRecommendation} for domain ${classification.domain}`);
             }
 
             // PHASE 2: Orchestrator / Threshold logic
@@ -747,6 +762,64 @@ ${localRagBlock}
         }
 
         throw new Error(`Invalid provider: ${provider}`);
+    }
+
+    /**
+     * Record user feedback for a message (Learning Orchestrator)
+     */
+    async recordFeedback(
+        messageId: string,
+        feedback: 'good' | 'bad' | 'wrong_model',
+        _userId: string = 'default-user'
+    ): Promise<void> {
+        // Log feedback
+        await routingLogger.recordFeedback(messageId, feedback);
+
+        // Find the decision for this message and update bandit
+        const decisions = routingLogger.getRecentDecisions(100);
+        const decision = decisions.find(d => d.messageId === messageId);
+
+        if (decision) {
+            const reward = banditSelector.feedbackToReward(feedback);
+            banditSelector.recordReward(decision.domain, decision.chosenProvider, reward);
+        }
+
+        logger.info(`[AIRouter] Feedback '${feedback}' recorded for message ${messageId}`);
+    }
+
+    /**
+     * Get learning system stats (for UI)
+     */
+    getLearningStats() {
+        return {
+            banditScores: banditSelector.getScores(),
+            bestProviders: Object.fromEntries(banditSelector.getBestProviders()),
+            recentDecisions: routingLogger.getRecentDecisions(20),
+            routingStats: Object.fromEntries(routingLogger.getStats()),
+        };
+    }
+
+    /**
+     * Log a routing decision (called after response is generated)
+     */
+    async logRoutingDecision(params: {
+        userId: string;
+        conversationId?: string;
+        messageId?: string;
+        domain: MessageDomain;
+        chosenProvider: AIProvider;
+        complexityScore: number;
+        selfConfidence: number;
+        responseTimeMs: number;
+    }): Promise<void> {
+        await routingLogger.logDecision(params);
+
+        // Record as a neutral pull for the bandit
+        banditSelector.recordReward(
+            params.domain,
+            params.chosenProvider,
+            0.5 // neutral until feedback received
+        );
     }
 
     /**

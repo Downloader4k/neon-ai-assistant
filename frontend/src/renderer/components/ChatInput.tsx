@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo, forwardRef, useImper
 import { useAppStore, Attachment } from '../store/useAppStore';
 import {
     Send, X, FileText, CloudSun, Search, Code2, Gift, Globe, Brain, HelpCircle, Slash,
+    ListTodo, ShoppingCart, ClipboardList, Calendar,
     type LucideIcon
 } from 'lucide-react';
 import { AttachmentMenu } from './AttachmentMenu';
@@ -77,6 +78,64 @@ const SLASH_COMMANDS: SlashCommand[] = [
         icon: Brain,
         action: 'navigate',
         target: 'memory',
+    },
+    {
+        command: '/todo',
+        args: '[aufgabe]',
+        description: 'Todo erstellen oder anzeigen',
+        icon: ListTodo,
+        action: 'prefill',
+    },
+    {
+        command: '/todos',
+        args: '',
+        description: 'Alle offenen Todos anzeigen',
+        icon: ListTodo,
+        action: 'prefill',
+    },
+    {
+        command: '/einkauf',
+        args: '[artikel, ...]',
+        description: 'Einkaufsliste: Artikel hinzufuegen',
+        icon: ShoppingCart,
+        action: 'prefill',
+    },
+    {
+        command: '/einkaufsliste',
+        args: '',
+        description: 'Einkaufsliste anzeigen',
+        icon: ShoppingCart,
+        action: 'prefill',
+    },
+    {
+        command: '/termin',
+        args: '[beschreibung]',
+        description: 'Termin erstellen',
+        icon: Calendar,
+        action: 'prefill',
+    },
+    {
+        command: '/termine',
+        args: '',
+        description: 'Naechste Termine anzeigen',
+        icon: Calendar,
+        action: 'prefill',
+    },
+    {
+        command: '/kalender',
+        args: '',
+        description: 'Kalender oeffnen',
+        icon: Calendar,
+        action: 'navigate',
+        target: 'calendar',
+    },
+    {
+        command: '/listen',
+        args: '',
+        description: 'Listen-Manager oeffnen',
+        icon: ClipboardList,
+        action: 'navigate',
+        target: 'lists',
     },
     {
         command: '/hilfe',
@@ -241,6 +300,15 @@ const ChatInput = forwardRef<ChatInputHandle>((_props, ref) => {
                     message = args
                         ? `Recherchiere im Web: ${args}`
                         : '';
+                } else if (cmd.command === '/todo') {
+                    // Send as slash command directly so SkillProcessor picks it up
+                    message = args ? `/todo ${args}` : '';
+                } else if (cmd.command === '/todos') {
+                    message = '/todos';
+                } else if (cmd.command === '/einkauf') {
+                    message = args ? `/einkauf ${args}` : '';
+                } else if (cmd.command === '/einkaufsliste') {
+                    message = '/einkaufsliste';
                 }
                 if (message) {
                     sendMessage(message);
@@ -542,7 +610,7 @@ const ChatInput = forwardRef<ChatInputHandle>((_props, ref) => {
                     overflow: hidden;
                     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
                     z-index: 50;
-                    max-height: 380px;
+                    max-height: 520px;
                     overflow-y: auto;
                     animation: slashMenuIn 0.15s ease-out;
                 }
