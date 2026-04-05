@@ -726,6 +726,9 @@ ${nextQuestion.isStageEnd ? '\n[Nach dieser Antwort: Fasse die Stufe kurz zusamm
                 // Fix broken backticks from Gemma (´´´ → ```, ∣ → |)
                 fullResponse = fullResponse.replace(/[´`]{3}/g, '```').replace(/∣/g, '|');
 
+                // Remove Gemma token artifacts like <unused1234>, <unused6216> etc.
+                fullResponse = fullResponse.replace(/<unused\d+>/g, '').replace(/\s{2,}/g, ' ').trim();
+
                 // NOW stream the validated response to user
                 // Use Array.from to handle multi-byte chars (emojis) safely
                 const chars = Array.from(fullResponse);

@@ -152,7 +152,7 @@ Im Chat `/` tippen um alle Commands zu sehen:
 |---------|-------------|
 | **Entdecken-Seite** | Startseite mit Quick-Start-Prompts und Feature-Karten |
 | **Persoenlichkeiten** | 5 Modi: Freundlich, Sachlich, Sarkastisch, Lehrer, Pirat |
-| **Morgenbriefing** | Tagesstart mit Wetter, Zusammenfassung und Vorschlaegen |
+| **Morgenbriefing** | Tagesstart mit Wetter, Zusammenfassung und Vorschlaegen *(vorerst deaktiviert)* |
 | **Challenge Mode** | Raetsel, Quiz, Code-Challenges, Debatten, Kreativ-Aufgaben |
 | **Thought Timeline** | Chronologische Ansicht aller Konversationen |
 | **AI Diary** | Automatische Tagebuch-Generierung aus Gespraechen |
