@@ -3,7 +3,7 @@ import { prisma } from '../db/prisma';
 import { logger } from '../../utils/logger';
 
 // ─────────────────────────────────────────────────────────────
-// PROACTIVITY SERVICE - Entscheidet wann NEON sich meldet
+// PROACTIVITY SERVICE - Phase 2: Kontextbewusste AI-Nachrichten
 // ─────────────────────────────────────────────────────────────
 
 export interface ProactivityInput {
@@ -19,6 +19,13 @@ export interface ProactivityInput {
     todayTodos: number;
     todayEvents: number;
     userName: string;
+    // ── Phase 2: Erweiterter Kontext ──
+    recentTopics: string[];          // Letzte Gesprächsthemen
+    completedTodosToday: number;     // Heute erledigte Aufgaben
+    lastConversationTitle?: string;  // Titel der letzten Konversation
+    emotionHistory: string[];        // Stimmungsverlauf (letzte 5)
+    dayStreak: number;               // Tage in Folge aktiv
+    preferredGreeting?: string;      // Gelernte Begrüßungspräferenz
 }
 
 export interface ProactivityDecision {
@@ -27,6 +34,8 @@ export interface ProactivityDecision {
     reason?: string;
     type?: string;
     priority?: string;
+    useAI?: boolean;       // Phase 2: AI-generierte Nachricht
+    aiContext?: string;    // Kontext für AI-Generierung
 }
 
 interface Candidate {
@@ -35,24 +44,36 @@ interface Candidate {
     reason: string;
     type: string;
     priority: string;
+    useAI?: boolean;
+    aiContext?: string;
 }
 
 const MIN_SCORE = 0.5;
 
+// System-Prompt für kontextbewusste proaktive Nachrichten
+const PROACTIVE_SYSTEM_PROMPT = `Du bist NEON, ein persönlicher KI-Begleiter. Du schreibst eine KURZE proaktive Nachricht an den User.
+
+REGELN:
+- Maximal 1-2 Sätze, natürlich und warm
+- Auf Deutsch, Du-Form
+- Kein Smalltalk, sei direkt aber freundlich
+- Beziehe dich auf den gegebenen Kontext
+- Keine Emojis im Text (werden vom UI hinzugefügt)
+- Stelle eine konkrete Frage oder mache einen Vorschlag
+- Sei nicht aufdringlich oder übertrieben enthusiastisch
+- Klinge wie ein guter Freund, nicht wie ein Chatbot`;
+
 class ProactivityService {
     private loopInterval: NodeJS.Timeout | null = null;
     private isRunning = false;
-
-    // IO-Instanz fuer WebSocket-Push
     private io: any = null;
 
     setIO(io: any): void {
         this.io = io;
     }
 
-    /**
-     * Proaktivitaets-Loop starten
-     */
+    // ── Loop-Verwaltung ──
+
     startLoop(intervalMs: number = 2 * 60 * 1000): void {
         if (this.isRunning) {
             logger.warn('[Proactivity] Loop already running');
@@ -60,51 +81,33 @@ class ProactivityService {
         }
 
         this.isRunning = true;
-
-        // Erster Check nach 30 Sekunden (nicht sofort beim Start)
-        setTimeout(() => {
-            this.runCheck();
-        }, 30 * 1000);
-
-        // Danach regelmaessig
-        this.loopInterval = setInterval(() => {
-            this.runCheck();
-        }, intervalMs);
-
+        setTimeout(() => this.runCheck(), 30 * 1000);
+        this.loopInterval = setInterval(() => this.runCheck(), intervalMs);
         logger.info(`[Proactivity] Loop gestartet (Intervall: ${intervalMs / 1000}s)`);
     }
 
-    /**
-     * Loop stoppen
-     */
     stopLoop(): void {
         if (this.loopInterval) {
             clearInterval(this.loopInterval);
             this.loopInterval = null;
         }
         this.isRunning = false;
-        logger.info('[Proactivity] Loop gestoppt');
     }
 
-    /**
-     * Einen Check-Durchlauf fuer alle aktiven User
-     */
+    // ── Haupt-Check ──
+
     private async runCheck(): Promise<void> {
         try {
             const activeUsers = presenceService.getActiveUsers();
 
             for (const userId of activeUsers) {
-                // Cooldown pruefen
-                if (!presenceService.canSendProactive(userId)) {
-                    continue;
-                }
+                if (!presenceService.canSendProactive(userId)) continue;
 
                 const input = await this.buildInput(userId);
                 if (!input) continue;
 
                 const decision = this.decide(input);
-
-                if (decision.shouldMessage && decision.message) {
+                if (decision.shouldMessage) {
                     await this.sendProactiveMessage(userId, decision);
                 }
             }
@@ -113,21 +116,20 @@ class ProactivityService {
         }
     }
 
-    /**
-     * Input fuer einen User zusammenbauen
-     */
+    // ── Phase 2: Erweiterter Kontext-Aufbau ──
+
     private async buildInput(userId: string): Promise<ProactivityInput | null> {
         const presence = presenceService.getStatus(userId);
         if (!presence) return null;
 
-        // User-Name laden
+        // User-Name
         let userName = 'User';
         try {
             const user = await prisma.user.findUnique({ where: { id: userId } });
             if (user) userName = user.name;
         } catch { /* ignore */ }
 
-        // Heutige Todos zaehlen
+        // Offene Todos
         let todayTodos = 0;
         try {
             todayTodos = await prisma.todoItem.count({
@@ -135,23 +137,33 @@ class ProactivityService {
             });
         } catch { /* ignore */ }
 
-        // Heutige Kalender-Termine zaehlen
+        // Heute erledigte Todos
+        let completedTodosToday = 0;
+        try {
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            completedTodosToday = await prisma.todoItem.count({
+                where: {
+                    userId,
+                    status: 'done',
+                    updatedAt: { gte: todayStart },
+                },
+            });
+        } catch { /* ignore */ }
+
+        // Kalender-Termine heute
         let todayEvents = 0;
         try {
             const todayStart = new Date();
             todayStart.setHours(0, 0, 0, 0);
             const todayEnd = new Date();
             todayEnd.setHours(23, 59, 59, 999);
-
             todayEvents = await prisma.calendarEvent.count({
-                where: {
-                    userId,
-                    startDate: { gte: todayStart, lte: todayEnd },
-                },
+                where: { userId, startDate: { gte: todayStart, lte: todayEnd } },
             });
         } catch { /* ignore */ }
 
-        // Letzte Nachrichten zaehlen (heute)
+        // Nachrichten heute
         let recentMessageCount = 0;
         try {
             const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -164,8 +176,27 @@ class ProactivityService {
             });
         } catch { /* ignore */ }
 
-        // Emotionalen Zustand laden
+        // Phase 2: Letzte Konversation + Themen
+        let lastConversationTitle: string | undefined;
+        let recentTopics: string[] = [];
+        try {
+            const recentConvs = await prisma.conversation.findMany({
+                where: { userId },
+                orderBy: { updatedAt: 'desc' },
+                take: 5,
+                select: { title: true },
+            });
+            if (recentConvs.length > 0) {
+                lastConversationTitle = recentConvs[0].title || undefined;
+                recentTopics = recentConvs
+                    .map(c => c.title)
+                    .filter((t): t is string => !!t && t !== 'Neue Unterhaltung');
+            }
+        } catch { /* ignore */ }
+
+        // Phase 2: Emotionaler Zustand + Verlauf
         let emotionalState: ProactivityInput['emotionalState'];
+        let emotionHistory: string[] = [];
         try {
             const { emotionService } = await import('../magic/EmotionService');
             const mood = await emotionService.getOverallMood(userId, 1);
@@ -175,6 +206,37 @@ class ProactivityService {
                     dominantEmotion: mood.topEmotion || 'neutral',
                     intensity: mood.score > 0.5 ? 'high' : mood.score > 0.2 ? 'medium' : 'low',
                 };
+            }
+            // Stimmungsverlauf der letzten 3 Tage
+            const history = await emotionService.getEmotionHistory(userId, 3);
+            emotionHistory = history
+                .slice(-5)
+                .map((h: any) => h.sentiment || 'neutral');
+        } catch { /* ignore */ }
+
+        // Phase 2: Aktivitäts-Streak (Tage in Folge mit Nachrichten)
+        let dayStreak = 0;
+        try {
+            const days = 14;
+            for (let i = 0; i < days; i++) {
+                const dayStart = new Date();
+                dayStart.setDate(dayStart.getDate() - i);
+                dayStart.setHours(0, 0, 0, 0);
+                const dayEnd = new Date(dayStart);
+                dayEnd.setHours(23, 59, 59, 999);
+
+                const count = await prisma.message.count({
+                    where: {
+                        conversation: { userId },
+                        role: 'user',
+                        timestamp: { gte: dayStart, lte: dayEnd },
+                    },
+                });
+                if (count > 0) {
+                    dayStreak++;
+                } else if (i > 0) { // Heute darf noch leer sein
+                    break;
+                }
             }
         } catch { /* ignore */ }
 
@@ -187,111 +249,174 @@ class ProactivityService {
             todayTodos,
             todayEvents,
             userName,
+            recentTopics,
+            completedTodosToday,
+            lastConversationTitle,
+            emotionHistory,
+            dayStreak,
         };
     }
 
-    /**
-     * Entscheidung treffen ob und was gesendet wird
-     */
+    // ── Phase 2: Intelligentere Entscheidungslogik ──
+
     decide(input: ProactivityInput): ProactivityDecision {
         const candidates: Candidate[] = [];
         const hour = input.time.getHours();
         const todayKey = presenceService.getTodayKey('morning');
         const eveningKey = presenceService.getTodayKey('evening');
 
-        // ─── Begruesssung nach Rueckkehr ───
+        // ─── Begrüßung nach Rückkehr (AI-generiert) ───
         if (input.presence.previousState === 'offline' || input.presence.previousState === 'idle') {
             const idleMinutes = (Date.now() - input.presence.stateChangedAt) / 60000;
-            if (idleMinutes < 5) { // Gerade erst zurueckgekommen
+            if (idleMinutes < 5) {
+                const contextParts: string[] = [];
+                contextParts.push(`User: ${input.userName}`);
+                contextParts.push(`Tageszeit: ${this.getTimeOfDayLabel(hour)}`);
+                if (input.lastConversationTitle) {
+                    contextParts.push(`Letztes Thema: "${input.lastConversationTitle}"`);
+                }
+                if (input.todayTodos > 0) {
+                    contextParts.push(`${input.todayTodos} offene Aufgaben`);
+                }
+                if (input.completedTodosToday > 0) {
+                    contextParts.push(`${input.completedTodosToday} heute erledigt`);
+                }
+                if (input.dayStreak > 2) {
+                    contextParts.push(`${input.dayStreak} Tage Streak`);
+                }
+                if (input.emotionalState) {
+                    contextParts.push(`Stimmung: ${input.emotionalState.sentiment}`);
+                }
+
                 candidates.push({
                     score: 0.8,
-                    message: `Hey ${input.userName}! Schön, dass du wieder da bist. Willst du weitermachen, wo wir aufgehört haben?`,
+                    message: '', // Wird von AI generiert
                     reason: 'presence_return',
                     type: 'greeting',
                     priority: 'medium',
+                    useAI: true,
+                    aiContext: `Begrüße den User nach seiner Rückkehr. Beziehe dich auf seinen Kontext.\n${contextParts.join('\n')}`,
                 });
             }
         }
 
-        // ─── Morgen-Check-in (7-10 Uhr) ───
+        // ─── Morgen-Check-in (7-10 Uhr, AI-generiert) ───
         if (hour >= 7 && hour < 10 && !presenceService.hasCheckinDone(input.userId, todayKey)) {
-            let morningMsg = `Guten Morgen, ${input.userName}!`;
-
-            if (input.todayEvents > 0 || input.todayTodos > 0) {
-                const parts: string[] = [];
-                if (input.todayTodos > 0) parts.push(`${input.todayTodos} offene Aufgabe${input.todayTodos > 1 ? 'n' : ''}`);
-                if (input.todayEvents > 0) parts.push(`${input.todayEvents} Termin${input.todayEvents > 1 ? 'e' : ''}`);
-                morningMsg += ` Du hast heute ${parts.join(' und ')}. Soll ich dir einen Überblick geben?`;
-            } else {
-                morningMsg += ' Ein freier Tag — willst du etwas Neues anfangen oder entspannen?';
+            const contextParts: string[] = [];
+            contextParts.push(`User: ${input.userName}`);
+            if (input.todayTodos > 0) contextParts.push(`${input.todayTodos} offene Aufgaben`);
+            if (input.todayEvents > 0) contextParts.push(`${input.todayEvents} Termine heute`);
+            if (input.dayStreak > 2) contextParts.push(`${input.dayStreak} Tage Streak — erwähne das lobend`);
+            if (input.emotionalState?.sentiment === 'negative') {
+                contextParts.push('Stimmung gestern war negativ — sei besonders einfühlsam');
             }
 
             candidates.push({
                 score: 0.75,
-                message: morningMsg,
+                message: '',
                 reason: 'morning_checkin',
                 type: 'routine',
                 priority: 'medium',
+                useAI: true,
+                aiContext: `Morgendliche Begrüßung. Gib einen kurzen Ausblick auf den Tag.\n${contextParts.join('\n')}`,
             });
         }
 
-        // ─── Abend-Summary (19-21 Uhr) ───
+        // ─── Abend-Summary (19-21 Uhr, AI-generiert) ───
         if (hour >= 19 && hour < 21 && !presenceService.hasCheckinDone(input.userId, eveningKey)) {
+            const contextParts: string[] = [];
+            contextParts.push(`User: ${input.userName}`);
+            if (input.completedTodosToday > 0) contextParts.push(`${input.completedTodosToday} Aufgaben heute erledigt`);
+            if (input.todayTodos > 0) contextParts.push(`${input.todayTodos} noch offen`);
+            if (input.recentMessageCount > 0) contextParts.push(`${input.recentMessageCount} Nachrichten heute`);
+            if (input.recentTopics.length > 0) contextParts.push(`Themen heute: ${input.recentTopics.slice(0, 3).join(', ')}`);
+
             candidates.push({
                 score: 0.6,
-                message: `Hey ${input.userName}, der Tag neigt sich. Soll ich dir zusammenfassen, was du heute geschafft hast?`,
+                message: '',
                 reason: 'evening_summary',
                 type: 'routine',
                 priority: 'low',
+                useAI: true,
+                aiContext: `Abend-Rückblick. Fasse zusammen was der User heute geschafft hat und frage ob er Feierabend macht.\n${contextParts.join('\n')}`,
             });
         }
 
-        // ─── Spaeter Abend (nach 23 Uhr) ───
+        // ─── Später Abend (nach 23 Uhr) ───
         if (hour >= 23 || hour < 4) {
             const lateKey = presenceService.getTodayKey('late');
             if (!presenceService.hasCheckinDone(input.userId, lateKey)) {
                 candidates.push({
                     score: 0.65,
-                    message: `Es ist schon spät, ${input.userName}. Soll ich deine offenen Aufgaben für morgen sortieren?`,
+                    message: '',
                     reason: 'late_night',
                     type: 'care',
                     priority: 'low',
+                    useAI: true,
+                    aiContext: `Es ist spät (${hour} Uhr). User: ${input.userName}. Erinnere sanft daran, dass es spät ist. ${input.todayTodos > 0 ? `${input.todayTodos} offene Aufgaben können morgen erledigt werden.` : ''}`,
                 });
             }
         }
 
-        // ─── Emotionale Unterstuetzung ───
+        // ─── Emotionale Unterstützung (AI-generiert) ───
         if (input.emotionalState && input.emotionalState.sentiment === 'negative') {
+            const contextParts: string[] = [];
+            contextParts.push(`User: ${input.userName}`);
+            contextParts.push(`Dominante Emotion: ${input.emotionalState.dominantEmotion}`);
+            contextParts.push(`Intensität: ${input.emotionalState.intensity}`);
+            if (input.emotionHistory.length > 0) {
+                contextParts.push(`Stimmungsverlauf: ${input.emotionHistory.join(' → ')}`);
+            }
+
             candidates.push({
                 score: 0.85,
-                message: `Du wirkst gerade etwas belastet, ${input.userName}. Soll ich dir helfen, deine Aufgaben zu strukturieren oder willst du einfach reden?`,
+                message: '',
                 reason: 'emotional_support',
                 type: 'care',
                 priority: 'high',
+                useAI: true,
+                aiContext: `Der User scheint belastet. Biete einfühlsam Unterstützung an, ohne aufdringlich zu sein. Frage ob er reden will oder Hilfe bei Aufgaben braucht.\n${contextParts.join('\n')}`,
             });
         }
 
-        // ─── Produktivitaets-Impuls (wenn lange nichts geschrieben) ───
+        // ─── Produktivitäts-Impuls ───
         if (input.presence.state === 'available' && input.recentMessageCount === 0 &&
             input.todayTodos > 0 && hour >= 10 && hour < 18) {
             const prodKey = presenceService.getTodayKey('productivity');
             if (!presenceService.hasCheckinDone(input.userId, prodKey)) {
                 candidates.push({
                     score: 0.5,
-                    message: `Du hast noch ${input.todayTodos} offene Aufgabe${input.todayTodos > 1 ? 'n' : ''}. Willst du eine davon angehen?`,
+                    message: '',
                     reason: 'productivity_nudge',
                     type: 'suggestion',
                     priority: 'low',
+                    useAI: true,
+                    aiContext: `Sanfter Produktivitäts-Impuls. User: ${input.userName}. ${input.todayTodos} offene Aufgaben. Der User war heute noch nicht aktiv. Motiviere kurz ohne Druck.`,
                 });
             }
         }
 
-        // ─── Beste Kandidat waehlen ───
+        // ─── Streak-Feier (alle 7 Tage) ───
+        if (input.dayStreak > 0 && input.dayStreak % 7 === 0) {
+            const streakKey = presenceService.getTodayKey(`streak-${input.dayStreak}`);
+            if (!presenceService.hasCheckinDone(input.userId, streakKey)) {
+                candidates.push({
+                    score: 0.7,
+                    message: '',
+                    reason: 'streak_celebration',
+                    type: 'motivation',
+                    priority: 'medium',
+                    useAI: true,
+                    aiContext: `Feiere den ${input.dayStreak}-Tage-Streak von ${input.userName}! Kurz und motivierend.`,
+                });
+            }
+        }
+
+        // ─── Beste Kandidat wählen ───
         if (candidates.length === 0) {
             return { shouldMessage: false };
         }
 
-        // Nach Score sortieren, hoechster zuerst
         candidates.sort((a, b) => b.score - a.score);
         const best = candidates[0];
 
@@ -305,17 +430,44 @@ class ProactivityService {
             reason: best.reason,
             type: best.type,
             priority: best.priority,
+            useAI: best.useAI,
+            aiContext: best.aiContext,
         };
     }
 
-    /**
-     * Proaktive Nachricht senden (DB + WebSocket)
-     */
-    private async sendProactiveMessage(userId: string, decision: ProactivityDecision): Promise<void> {
-        if (!decision.message) return;
+    // ── Phase 2: AI-Nachricht generieren ──
 
+    private async generateAIMessage(userId: string, context: string, fallbackUserName: string): Promise<string> {
         try {
-            // Duplikat-Check: Gleiche Nachricht in den letzten 30 Minuten (egal ob gelesen oder nicht)?
+            const { aiRouter } = await import('../router/AIRouter');
+
+            const response = await aiRouter.route(
+                context,
+                [], // Keine Konversationshistorie nötig
+                'ollama', // Lokal für Speed + Privatsphäre
+                PROACTIVE_SYSTEM_PROMPT
+            );
+
+            if (response?.content && response.content.trim().length > 5) {
+                // Anführungszeichen entfernen falls die AI welche generiert
+                let msg = response.content.trim();
+                msg = msg.replace(/^["']|["']$/g, '');
+                logger.info(`[Proactivity] AI-Nachricht generiert für ${userId}: "${msg.substring(0, 50)}..."`);
+                return msg;
+            }
+        } catch (error) {
+            logger.warn('[Proactivity] AI-Generierung fehlgeschlagen, nutze Fallback', { error: (error as Error).message });
+        }
+
+        // Fallback: Statische Nachricht
+        return `Hey ${fallbackUserName}! Schön, dass du da bist.`;
+    }
+
+    // ── Nachricht senden (DB + WebSocket) ──
+
+    private async sendProactiveMessage(userId: string, decision: ProactivityDecision): Promise<void> {
+        try {
+            // Duplikat-Check: Gleicher Trigger in letzten 30 Minuten?
             const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
             const existing = await prisma.proactiveMessage.findFirst({
                 where: {
@@ -325,56 +477,87 @@ class ProactivityService {
                 },
             });
             if (existing) {
-                logger.debug(`[Proactivity] Duplikat verhindert für ${userId}: "${decision.reason}" (letzte vor ${Math.round((Date.now() - existing.createdAt.getTime()) / 1000)}s)`);
+                logger.debug(`[Proactivity] Duplikat verhindert: "${decision.reason}"`);
                 return;
             }
+
+            // Phase 2: AI-generierte Nachricht oder statischer Fallback
+            let content = decision.message || '';
+            if (decision.useAI && decision.aiContext) {
+                // User-Name für Fallback laden
+                let userName = 'User';
+                try {
+                    const user = await prisma.user.findUnique({ where: { id: userId } });
+                    if (user) userName = user.name;
+                } catch { /* ignore */ }
+
+                content = await this.generateAIMessage(userId, decision.aiContext, userName);
+            }
+
+            if (!content || content.trim().length === 0) return;
 
             // In DB speichern
             const saved = await prisma.proactiveMessage.create({
                 data: {
                     userId,
-                    content: decision.message,
+                    content,
                     type: decision.type || 'suggestion',
                     trigger: decision.reason || 'unknown',
                     priority: decision.priority || 'medium',
                 },
             });
 
-            // Ueber WebSocket pushen (Echtzeit!)
+            // WebSocket Push
             if (this.io) {
                 this.io.to(`user:${userId}`).emit('proactive-message', {
                     id: saved.id,
-                    content: decision.message,
+                    content,
                     type: decision.type,
+                    trigger: decision.reason,
                     reason: decision.reason,
                     priority: decision.priority,
                     createdAt: saved.createdAt,
                 });
-                logger.info(`[Proactivity] Nachricht gesendet an ${userId}: "${decision.reason}"`);
+                logger.info(`[Proactivity] Nachricht gesendet an ${userId}: "${decision.reason}" (AI: ${!!decision.useAI})`);
             }
 
-            // Cooldown setzen
+            // Cooldown + Checkin markieren
             presenceService.markProactiveSent(userId);
-
-            // Check-in als erledigt markieren
-            if (decision.reason === 'morning_checkin') {
-                presenceService.markCheckinDone(userId, presenceService.getTodayKey('morning'));
-            } else if (decision.reason === 'evening_summary') {
-                presenceService.markCheckinDone(userId, presenceService.getTodayKey('evening'));
-            } else if (decision.reason === 'late_night') {
-                presenceService.markCheckinDone(userId, presenceService.getTodayKey('late'));
-            } else if (decision.reason === 'productivity_nudge') {
-                presenceService.markCheckinDone(userId, presenceService.getTodayKey('productivity'));
-            }
+            this.markCheckinForReason(decision.reason, userId);
 
         } catch (error) {
             logger.error('[Proactivity] Fehler beim Senden', { error, userId });
         }
     }
 
-    /**
-     * Manuell eine proaktive Nachricht ausloesen (z.B. bei Presence-Return)
-     */
+    private markCheckinForReason(reason: string | undefined, userId: string): void {
+        const map: Record<string, string> = {
+            'morning_checkin': 'morning',
+            'evening_summary': 'evening',
+            'late_night': 'late',
+            'productivity_nudge': 'productivity',
+        };
+        const key = reason ? map[reason] : undefined;
+        if (key) {
+            presenceService.markCheckinDone(userId, presenceService.getTodayKey(key));
+        }
+        // Streak-Feier markieren
+        if (reason?.startsWith('streak_')) {
+            presenceService.markCheckinDone(userId, presenceService.getTodayKey(reason));
+        }
+    }
+
+    private getTimeOfDayLabel(hour: number): string {
+        if (hour >= 5 && hour < 10) return 'Morgen';
+        if (hour >= 10 && hour < 12) return 'Vormittag';
+        if (hour >= 12 && hour < 14) return 'Mittag';
+        if (hour >= 14 && hour < 18) return 'Nachmittag';
+        if (hour >= 18 && hour < 21) return 'Abend';
+        return 'Nacht';
+    }
+
+    // ── Öffentliche Methoden ──
+
     async triggerForUser(userId: string): Promise<void> {
         if (!presenceService.canSendProactive(userId)) return;
 
@@ -382,7 +565,7 @@ class ProactivityService {
         if (!input) return;
 
         const decision = this.decide(input);
-        if (decision.shouldMessage && decision.message) {
+        if (decision.shouldMessage) {
             await this.sendProactiveMessage(userId, decision);
         }
     }

@@ -129,6 +129,7 @@ export default function ProactiveNotifications() {
             case 'productivity_nudge': return 'Aufgaben öffnen';
             case 'emotional_support': return 'Erzähl mir mehr';
             case 'late_night': return 'Für morgen planen';
+            case 'streak_celebration': return 'Weiter so!';
             default: return 'Verstanden';
         }
     };
@@ -139,6 +140,7 @@ export default function ProactiveNotifications() {
             case 'routine': return '📋';
             case 'care': return '💛';
             case 'suggestion': return '💡';
+            case 'motivation': return '🔥';
             default: return '✨';
         }
     };
