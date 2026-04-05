@@ -315,16 +315,17 @@ class ProactivityService {
         if (!decision.message) return;
 
         try {
-            // Duplikat-Check: Gleiche ungelesene Nachricht bereits vorhanden?
+            // Duplikat-Check: Gleiche Nachricht in den letzten 30 Minuten (egal ob gelesen oder nicht)?
+            const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
             const existing = await prisma.proactiveMessage.findFirst({
                 where: {
                     userId,
                     trigger: decision.reason || 'unknown',
-                    read: false,
+                    createdAt: { gte: thirtyMinAgo },
                 },
             });
             if (existing) {
-                logger.debug(`[Proactivity] Duplikat verhindert für ${userId}: "${decision.reason}"`);
+                logger.debug(`[Proactivity] Duplikat verhindert für ${userId}: "${decision.reason}" (letzte vor ${Math.round((Date.now() - existing.createdAt.getTime()) / 1000)}s)`);
                 return;
             }
 

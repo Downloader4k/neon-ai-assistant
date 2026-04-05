@@ -149,11 +149,14 @@ export function initializeWebSocket(httpServer: HTTPServer): SocketIOServer {
         // Explicitly register user for notification room
         socket.on('register-user', (data) => {
             const { userId } = data;
+            const alreadyRegistered = socketUserId === userId;
             socketUserId = userId;
             socket.join(`user:${userId}`);
 
-            // Presence registrieren
-            presenceService.registerUser(userId);
+            // Presence registrieren (nur beim ersten Mal pro Socket)
+            if (!alreadyRegistered) {
+                presenceService.registerUser(userId);
+            }
 
             // Aktuellen Status senden
             const status = presenceService.getStatus(userId);

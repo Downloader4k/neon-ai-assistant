@@ -54,8 +54,12 @@ class PresenceService extends EventEmitter {
         const now = Date.now();
         const existing = this.users.get(userId);
 
+        // Mindestens 2 Minuten offline gewesen, bevor wir "Rückkehr" melden
+        const MIN_ABSENCE_FOR_RETURN_MS = 2 * 60 * 1000;
+
         if (existing) {
             const previousState = existing.status.state;
+            const timeSinceDisconnect = now - existing.context.lastActivityAt;
             existing.context.isSocketConnected = true;
             existing.context.lastSocketConnectAt = now;
             existing.context.lastActivityAt = now;
@@ -63,8 +67,10 @@ class PresenceService extends EventEmitter {
             // State neu berechnen
             this.updateState(userId);
 
-            // Wenn vorher offline/idle → jetzt available = Rueckkehr
-            if ((previousState === 'offline' || previousState === 'idle') && existing.status.state === 'available') {
+            // Nur als Rueckkehr emittieren wenn User mindestens 2 Min weg war
+            if ((previousState === 'offline' || previousState === 'idle') &&
+                existing.status.state === 'available' &&
+                timeSinceDisconnect >= MIN_ABSENCE_FOR_RETURN_MS) {
                 this.emit('presence-return', { userId, previousState, newState: existing.status.state });
             }
         } else {
@@ -89,6 +95,9 @@ class PresenceService extends EventEmitter {
                 lastProactiveAt: 0,
             });
 
+            // Erster Besuch nach Backend-Neustart: Nur 1x senden, nicht bei jedem Refresh
+            // Wir setzen lastProactiveAt auf jetzt, damit der Cooldown greift
+            // und emittieren presence-return nur einmal
             this.emit('presence-return', { userId, previousState: 'offline', newState: 'available' });
         }
 

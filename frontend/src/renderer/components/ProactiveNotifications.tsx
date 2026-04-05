@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, Check, Sparkles } from 'lucide-react';
+import { X, Check, Sparkles, MessageCircle, ArrowRight } from 'lucide-react';
+import { useAppStore } from '../store/useAppStore';
 
 interface ProactiveMessage {
     id: string;
     type: string;
     content: string;
     reason?: string;
+    trigger?: string;
     priority?: string;
     createdAt: string;
 }
@@ -13,6 +15,10 @@ interface ProactiveMessage {
 export default function ProactiveNotifications() {
     const [messages, setMessages] = useState<ProactiveMessage[]>([]);
     const [fadeOut, setFadeOut] = useState<string | null>(null);
+    const conversations = useAppStore((state) => state.conversations);
+    const loadConversation = useAppStore((state) => state.loadConversation);
+    const setActiveView = useAppStore((state) => state.setActiveView);
+    const sendMessage = useAppStore((state) => state.sendMessage);
 
     const fetchPending = useCallback(async () => {
         try {
@@ -83,10 +89,49 @@ export default function ProactiveNotifications() {
         }, 300);
     };
 
+    // Hauptaktion: Letzte Konversation öffnen oder Chat starten
+    const handleAction = async (message: ProactiveMessage) => {
+        const trigger = message.trigger || message.reason || '';
+
+        if (trigger === 'presence_return' || trigger === 'morning_checkin') {
+            // Letzte Konversation öffnen
+            if (conversations.length > 0) {
+                const lastConv = conversations[0]; // Sortiert nach letzter Aktivität
+                loadConversation(lastConv.id);
+                setActiveView('chat');
+            }
+        } else if (trigger === 'evening_summary') {
+            // Tages-Summary anzeigen
+            setActiveView('summary' as any);
+        } else if (trigger === 'productivity_nudge') {
+            // ToDo-Liste öffnen
+            setActiveView('lists' as any);
+        } else {
+            // Fallback: Chat öffnen und Nachricht senden
+            setActiveView('chat');
+        }
+
+        // Nachricht als gelesen markieren
+        markAsRead(message.id);
+    };
+
     // Duplikate nach ID filtern (Race Condition zwischen REST und WebSocket)
     const uniqueMessages = messages.filter((m, i, arr) => arr.findIndex((x) => x.id === m.id) === i);
 
     if (uniqueMessages.length === 0) return null;
+
+    const getActionLabel = (msg: ProactiveMessage) => {
+        const trigger = msg.trigger || msg.reason || '';
+        switch (trigger) {
+            case 'presence_return': return 'Weitermachen';
+            case 'morning_checkin': return 'Tagesplan ansehen';
+            case 'evening_summary': return 'Zusammenfassung';
+            case 'productivity_nudge': return 'Aufgaben öffnen';
+            case 'emotional_support': return 'Erzähl mir mehr';
+            case 'late_night': return 'Für morgen planen';
+            default: return 'Verstanden';
+        }
+    };
 
     const getTypeIcon = (type: string) => {
         switch (type) {
@@ -159,7 +204,7 @@ export default function ProactiveNotifications() {
 
                     {/* Action Button */}
                     <button
-                        onClick={() => markAsRead(message.id)}
+                        onClick={() => handleAction(message)}
                         style={{
                             width: '100%', display: 'flex', alignItems: 'center',
                             justifyContent: 'center', gap: '8px', padding: '8px 16px',
@@ -170,8 +215,8 @@ export default function ProactiveNotifications() {
                             transition: 'all 0.2s',
                         }}
                     >
-                        <Check style={{ width: '14px', height: '14px' }} />
-                        Verstanden
+                        <ArrowRight style={{ width: '14px', height: '14px' }} />
+                        {getActionLabel(message)}
                     </button>
                 </div>
             ))}
