@@ -15,7 +15,7 @@ export interface ExtractedMemory {
 
 export class ExtractionService {
     private ollamaUrl: string;
-    private extractionModel: string = process.env.OLLAMA_MODEL || 'gemma3:4b';
+    private extractionModel: string = process.env.OLLAMA_MODEL || 'gemma3:12b';
     private prisma: PrismaClient;
     private embeddingService: typeof embeddingService;
 

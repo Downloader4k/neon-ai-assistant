@@ -28,7 +28,7 @@ export class OllamaService {
 
     constructor() {
         this.baseURL = process.env.OLLAMA_URL || 'http://localhost:11434';
-        this.model = process.env.OLLAMA_MODEL || 'gemma3:4b';
+        this.model = process.env.OLLAMA_MODEL || 'gemma3:12b';
 
         this.client = axios.create({
             baseURL: this.baseURL,

@@ -11,9 +11,12 @@ export class SchedulerService {
     start() {
         logger.info('[Scheduler] Starting background jobs...');
 
-        // 1. Memory Extraction - Only via manual Admin Panel trigger
+        // 1. Memory Extraction - Event-basiert, NICHT beim Start
         // Startup-based extraction removed due to ERR_DLOPEN_FAILED issue
-        // Use POST /api/admin/extract-memories endpoint instead
+        // Triggers:
+        //   - Automatisch: 30s nach WebSocket-Disconnect (websocket.ts → disconnect handler)
+        //   - Automatisch: Alle 5 Nachrichten in aktiver Session (checkAutoExtraction)
+        //   - Manuell: POST /api/admin/extract-memories (Admin-Panel Fallback)
 
 
         // 2. Decay Job (Run once every 24 hours)
