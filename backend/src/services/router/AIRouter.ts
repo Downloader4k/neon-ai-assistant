@@ -51,6 +51,7 @@ export interface RouterConfig {
     enableOrchestrator: boolean; // Enable 5-stage orchestrator (Phase 1-3)
     selfConfidenceThreshold: number; // Threshold for self-confidence (Phase 2)
     claudeThreshold: number; // Threshold for expected depth (Phase 4)
+    visionProvider: 'local' | 'claude'; // Bilderkennung: lokal (Ollama) oder Claude
 }
 
 export interface AIResponse {
@@ -72,6 +73,7 @@ export class AIRouter {
             enableOrchestrator: process.env.ENABLE_ORCHESTRATOR !== 'false', // Default: true
             selfConfidenceThreshold: parseFloat(process.env.SELF_CONFIDENCE_THRESHOLD || '0.55'),
             claudeThreshold: parseFloat(process.env.CLAUDE_THRESHOLD || '0.8'),
+            visionProvider: (process.env.VISION_PROVIDER as 'local' | 'claude') || 'local',
         };
 
         this.loadSettings().catch(err => logger.error('Failed to load initial settings', { err }));
@@ -110,7 +112,7 @@ export class AIRouter {
             const preferences = await prisma.userPreference.findMany({
                 where: {
                     userId: SYSTEM_USER_ID,
-                    key: { in: ['complexityThreshold', 'enableHybridMode', 'privacyMode', 'ollamaModel'] }
+                    key: { in: ['complexityThreshold', 'enableHybridMode', 'privacyMode', 'ollamaModel', 'visionProvider'] }
                 }
             });
             //...
@@ -123,6 +125,7 @@ export class AIRouter {
                     if (pref.key === 'enableHybridMode') newConfig.enableHybridMode = pref.value === 'true';
                     if (pref.key === 'privacyMode') newConfig.privacyMode = pref.value === 'true';
                     if (pref.key === 'ollamaModel') newConfig.ollamaModel = pref.value;
+                    if (pref.key === 'visionProvider') newConfig.visionProvider = pref.value as 'local' | 'claude';
                 }
 
                 this.config = newConfig;
@@ -139,7 +142,8 @@ export class AIRouter {
                 { key: 'complexityThreshold', value: String(this.config.complexityThreshold) },
                 { key: 'enableHybridMode', value: String(this.config.enableHybridMode) },
                 { key: 'privacyMode', value: String(this.config.privacyMode) },
-                { key: 'ollamaModel', value: this.config.ollamaModel }
+                { key: 'ollamaModel', value: this.config.ollamaModel },
+                { key: 'visionProvider', value: this.config.visionProvider || 'local' }
             ];
 
             for (const update of updates) {

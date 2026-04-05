@@ -18,6 +18,7 @@ export default function SettingsPanel() {
             hybridMode: true,
             privacyMode: false,
             ollamaModel: 'qwen3:8b',
+            visionProvider: 'local',
             temperature: 0.7,
             maxTokens: 2000,
         },
@@ -290,6 +291,23 @@ export default function SettingsPanel() {
                                             )}
                                         </div>
                                     )}
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Bilderkennung</label>
+                                    <select
+                                        value={(settings.ai as any).visionProvider || 'local'}
+                                        onChange={(e) => updateSetting('ai', 'visionProvider', e.target.value)}
+                                        className="w-full px-4 py-2 bg-bg-tertiary border border-border rounded-lg"
+                                    >
+                                        <option value="local">Lokal (Gemma 3 — kostenlos, privat)</option>
+                                        <option value="claude">Claude Vision (Cloud — bessere Qualität)</option>
+                                    </select>
+                                    <p className="text-xs text-text-secondary mt-1">
+                                        {(settings.ai as any).visionProvider === 'claude'
+                                            ? 'Bilder werden an die Claude API gesendet (Kosten pro Bild)'
+                                            : 'Bilder werden lokal mit Gemma 3 analysiert (keine Kosten, Daten bleiben lokal)'}
+                                    </p>
                                 </div>
 
                                 <div>

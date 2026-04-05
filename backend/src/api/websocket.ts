@@ -498,35 +498,37 @@ ${nextQuestion.isStageEnd ? '\n[Nach dieser Antwort: Fasse die Stufe kurz zusamm
                     // OR we could append them here if they are sent as file type with content text.
                     // For now assuming attachments.content IS the text for files or base64 for images.
 
-                    if (images.length > 0 && (!effectiveForceProvider || effectiveForceProvider === 'ollama')) {
-                        // Vision-Context wurde bereits in der Context Phase injiziert
-                        logger.info('Image vision context already injected from Context Phase');
-                    }
+                    if (images.length > 0) {
+                        // Prüfe ob Claude-Vision in den Einstellungen aktiviert ist
+                        const { aiRouter } = await import('../services/router/AIRouter');
+                        const visionProvider = (aiRouter as any).config?.visionProvider || 'local';
 
-                    // Bilder direkt an Claude schicken (nativ multimodal, viel bessere Vision)
-                    if (images.length > 0 && (!effectiveForceProvider || effectiveForceProvider === 'claude' || effectiveForceProvider === 'auto')) {
-                        logger.info('[Vision] Bilder direkt an Claude als multimodal content senden');
-                        const contentBlocks: Array<{ type: 'text'; text: string } | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }> = [];
+                        if (visionProvider === 'claude') {
+                            // Bilder direkt an Claude als multimodal Content
+                            logger.info('[Vision] Bilder direkt an Claude (Einstellung: claude)');
+                            const contentBlocks: Array<{ type: 'text'; text: string } | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }> = [];
 
-                        // Bilder hinzufügen
-                        for (const img of images) {
-                            const rawData = img.content || img.data || '';
-                            if (!rawData) continue;
-                            const base64Data = rawData.replace(/^data:image\/\w+;base64,/, '');
-                            const mimeType = img.mimeType || 'image/jpeg';
-                            contentBlocks.push({
-                                type: 'image',
-                                source: { type: 'base64', media_type: mimeType, data: base64Data },
-                            });
+                            for (const img of images) {
+                                const rawData = img.content || img.data || '';
+                                if (!rawData) continue;
+                                const base64Data = rawData.replace(/^data:image\/\w+;base64,/, '');
+                                const mimeType = img.mimeType || 'image/jpeg';
+                                contentBlocks.push({
+                                    type: 'image',
+                                    source: { type: 'base64', media_type: mimeType, data: base64Data },
+                                });
+                            }
+
+                            const textContent = typeof finalPrompt === 'string' ? finalPrompt :
+                                (Array.isArray(finalPrompt) ? finalPrompt.find((b: any) => b.type === 'text')?.text || '' : '');
+                            contentBlocks.push({ type: 'text', text: textContent || 'Beschreibe was du auf dem Bild siehst.' });
+
+                            finalPrompt = contentBlocks;
+                            effectiveForceProvider = 'claude';
+                        } else {
+                            // Lokal (default): Vision-Context wurde bereits in Context Phase injiziert
+                            logger.info('[Vision] Lokale Analyse bereits im Kontext (Einstellung: local)');
                         }
-
-                        // Text-Nachricht hinzufügen
-                        const textContent = typeof finalPrompt === 'string' ? finalPrompt :
-                            (Array.isArray(finalPrompt) ? finalPrompt.find((b: any) => b.type === 'text')?.text || '' : '');
-                        contentBlocks.push({ type: 'text', text: textContent || 'Beschreibe was du auf dem Bild siehst.' });
-
-                        finalPrompt = contentBlocks;
-                        effectiveForceProvider = 'claude'; // Claude für multimodal erzwingen
                     }
 
                     // Handle text files if necessary (append to text)

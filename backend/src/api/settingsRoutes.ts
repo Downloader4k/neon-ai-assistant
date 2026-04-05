@@ -53,6 +53,7 @@ router.get('/', (_req, res) => {
                 hybridMode: aiConfig.enableHybridMode,
                 privacyMode: aiConfig.privacyMode,
                 ollamaModel: aiConfig.ollamaModel,
+                visionProvider: aiConfig.visionProvider || 'local',
                 personality: getUserPersonality('default-user'),
                 // These are stateless/env-based normally, but we return defaults
                 temperature: 0.7,
@@ -104,6 +105,10 @@ router.post('/', (req, res) => {
 
             if (ai.ollamaModel !== undefined) {
                 updates.ollamaModel = ai.ollamaModel;
+            }
+
+            if (ai.visionProvider !== undefined) {
+                updates.visionProvider = ai.visionProvider;
             }
 
             // Handle "Default Model" selection as preset complexity thresholds
