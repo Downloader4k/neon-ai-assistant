@@ -1043,7 +1043,48 @@ ${nextQuestion.isStageEnd ? '\n[Nach dieser Antwort: Fasse die Stufe kurz zusamm
                 presenceService.unregisterUser(socketUserId);
             }
 
-            logger.info('Client disconnected', { socketId: socket.id });
+            logger.info('Client disconnected', { socketId: socket.id, userId: socketUserId });
+
+            // Nach 30 Sekunden Delay Memory-Extraction starten (falls kein Reconnect)
+            // Delay verhindert sofortige Extraction bei kurzen Verbindungsunterbrechungen
+            if (socketUserId) {
+                const userId = socketUserId; // Capture für den Closure
+                const disconnectTimer = setTimeout(async () => {
+                    // Prüfen ob der User inzwischen wieder verbunden ist
+                    const userSockets = io.sockets.adapter.rooms.get(`user:${userId}`);
+                    if (userSockets && userSockets.size > 0) {
+                        logger.info('[PostDisconnect] User reconnected, skipping post-disconnect extraction', { userId });
+                        return;
+                    }
+
+                    logger.info('[PostDisconnect] Starte Memory-Extraction nach Conversation-Ende', { userId });
+
+                    try {
+                        const { memoryManagerService } = await import('../services/memory/MemoryManagerService');
+                        const stats = await memoryManagerService.runExtractionJob();
+
+                        if (stats.processed > 0) {
+                            logger.info('[PostDisconnect] Memory-Extraction abgeschlossen', {
+                                userId,
+                                processed: stats.processed,
+                                skipped: stats.skipped,
+                                errors: stats.errors
+                            });
+                        } else {
+                            logger.debug('[PostDisconnect] Keine unverarbeiteten Conversations gefunden', { userId });
+                        }
+                    } catch (error: any) {
+                        if (error?.code === 'ERR_DLOPEN_FAILED' || error?.message?.includes('DLOPEN')) {
+                            logger.warn('[PostDisconnect] Native Module nicht verfügbar, Extraction übersprungen', { userId });
+                        } else {
+                            logger.error('[PostDisconnect] Memory-Extraction fehlgeschlagen', { userId, error: error?.message });
+                        }
+                    }
+                }, 30_000); // 30 Sekunden Delay
+
+                // Timer aufräumen falls Socket-Kontext zerstört wird (sollte nicht passieren, aber sicher ist sicher)
+                socket.once('connect', () => clearTimeout(disconnectTimer));
+            }
         });
     });
 
