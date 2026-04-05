@@ -113,7 +113,7 @@ UNTERSCHEIDE STRIKT:
 REGELN:
 1. NUR Aussagen des NUTZERS (USER:) analysieren, NICHT die des Assistenten
 2. Maximal 2 Einträge pro Konversation — nur das Wichtigste
-3. Confidence unter 0.8 → NICHT speichern
+3. Confidence unter 0.75 → NICHT speichern
 4. Im Zweifel: NICHT speichern. Lieber eine Information verpassen als eine falsche speichern.
 5. Jeder extrahierte Fakt muss als DIREKTES ZITAT aus der Konversation nachweisbar sein
 
@@ -201,11 +201,11 @@ NUR das JSON-Array ausgeben, kein weiterer Text.`;
 
             const parsed = JSON.parse(jsonMatch[0]);
 
-            // Validate and filter — require minimum confidence of 0.7
+            // Validate and filter — require minimum confidence of 0.75
             return parsed.filter((item: any) =>
                 item.type &&
                 item.content &&
-                item.confidence >= 0.7 &&
+                item.confidence >= 0.75 &&
                 ['FACT', 'PREFERENCE', 'PROJECT', 'INSTRUCTION', 'RELATIONSHIP'].includes(item.type)
             ).map((item: any) => ({
                 ...item,
@@ -239,9 +239,9 @@ NUR das JSON-Array ausgeben, kein weiterer Text.`;
                 .split(/\s+/)
                 .filter((w: string) => w.length > 3)
                 // Remove common German filler words
-                .filter((w: string) => !['nutzer', 'benutzer', 'user', 'dass', 'eine', 'einem', 'einen', 'einer', 'sind', 'wird', 'wurde', 'haben', 'hatte', 'macht', 'machen', 'heißt', 'arbeitet', 'bevorzugt', 'möchte'].includes(w));
+                .filter((w: string) => !['nutzer', 'benutzer', 'user', 'dass', 'eine', 'einem', 'einen', 'einer', 'sind', 'wird', 'wurde', 'haben', 'hatte', 'macht', 'machen', 'heißt', 'arbeitet', 'bevorzugt', 'möchte', 'sein', 'seine', 'ihrer', 'wohnt', 'lebt', 'sagt', 'laut', 'nach', 'noch', 'auch', 'über', 'oder', 'aber', 'wenn', 'dann', 'kann', 'kein', 'keine', 'keinen', 'sehr', 'mehr', 'beim', 'also', 'denn', 'dies', 'jetzt', 'immer', 'schon', 'hier', 'dort', 'alle', 'viel', 'gern', 'gerne'].includes(w));
 
-            // At least 50% of meaningful words must appear in user messages
+            // At least 67% of meaningful words must appear in user messages
             const matchCount = contentWords.filter((w: string) => userText.includes(w)).length;
             const matchRatio = contentWords.length > 0 ? matchCount / contentWords.length : 0;
 
@@ -249,7 +249,7 @@ NUR das JSON-Array ausgeben, kein weiterer Text.`;
             const sourceQuote = (memory as any).sourceQuote || '';
             const quoteFound = sourceQuote.length > 5 && userText.includes(sourceQuote.toLowerCase().trim());
 
-            const verified = matchRatio >= 0.5 || quoteFound;
+            const verified = matchRatio >= 0.67 || quoteFound;
 
             if (!verified) {
                 logger.warn(`[Verification] REJECTED hallucinated memory: "${memory.content}" (matchRatio: ${matchRatio.toFixed(2)}, quoteFound: ${quoteFound})`);
@@ -388,7 +388,7 @@ NUR das JSON-Array ausgeben, kein weiterer Text.`;
             }
 
             // Require high confidence for all types
-            if (memory.confidence < 0.7) {
+            if (memory.confidence < 0.75) {
                 logger.info(`[Quality Filter] Rejected low confidence ${memory.type} (conf ${memory.confidence}): "${content}"`);
                 return false;
             }
@@ -410,9 +410,9 @@ NUR das JSON-Array ausgeben, kein weiterer Text.`;
 
         for (const memory of memories) {
             try {
-                // 1. Search for semantic candidates (low threshold to catch near-duplicates)
-                // Lowered from 0.75 to 0.50 to aggressively catch duplicate concepts
-                const candidates = await this.embeddingService.searchSimilar(memory.content, 1, 0.50);
+                // 1. Search for semantic candidates
+                // Threshold 0.67: catch near-duplicates without merging semantically similar but factually different memories
+                const candidates = await this.embeddingService.searchSimilar(memory.content, 1, 0.67);
 
                 if (candidates.length === 0) {
                     finalized.push(memory);
@@ -473,7 +473,8 @@ NUR das JSON-Array ausgeben, kein weiterer Text.`;
 
             } catch (error) {
                 console.error('[Consolidation] Error processing memory:', error);
-                finalized.push(memory); // Fallback: save it
+                // Do NOT save on error to avoid duplicates — log and skip instead
+                logger.warn(`[Consolidation] Skipping memory due to processing error: "${memory.content}"`);
             }
         }
 
