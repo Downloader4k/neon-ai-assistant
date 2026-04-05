@@ -53,6 +53,8 @@ export interface ServerToClientEvents {
     'conversation-updated': (data: { id: string; title: string }) => void;
     'auto-learning-complete': (data: { topic: string; result: string }) => void;
     'memory-extraction-progress': (data: { processed: number; total: number; currentStep: string }) => void;
+    'proactive-message': (data: { id: string; content: string; type?: string; reason?: string; priority?: string; createdAt: Date }) => void;
+    'presence-status': (data: { state: string; timeOfDay: string }) => void;
 }
 
 /**
@@ -112,6 +114,8 @@ import { socketService } from '../services/socket/SocketService';
 import { getUserPersonality } from './settingsRoutes';
 import { voiceOrchestrator } from '../services/voice/VoiceSessionOrchestrator';
 import { aiRouter as aiRouterInstance } from '../services/router/AIRouter';
+import { presenceService } from '../services/presence/PresenceService';
+import { proactivityService } from '../services/proactive/ProactivityService';
 
 export function initializeWebSocket(httpServer: HTTPServer): SocketIOServer {
     const io = socketService.initialize(httpServer, {
@@ -124,14 +128,43 @@ export function initializeWebSocket(httpServer: HTTPServer): SocketIOServer {
 
     ioInstance = io;
 
+    // Proactivity Service mit IO-Instanz verbinden
+    proactivityService.setIO(io);
+
+    // Presence-Return Listener: Bei Rueckkehr proaktiv melden
+    presenceService.on('presence-return', async ({ userId, previousState, newState }) => {
+        logger.info(`[Presence] User ${userId} returned: ${previousState} → ${newState}`);
+        // Kurz warten damit der Client die Verbindung aufgebaut hat
+        setTimeout(() => {
+            proactivityService.triggerForUser(userId);
+        }, 3000);
+    });
+
     io.on('connection', (socket: Socket) => {
         logger.info('Client connected', { socketId: socket.id });
+
+        // Track which userId this socket belongs to
+        let socketUserId: string | null = null;
 
         // Explicitly register user for notification room
         socket.on('register-user', (data) => {
             const { userId } = data;
+            socketUserId = userId;
             socket.join(`user:${userId}`);
-            logger.info('User registered for notifications', { socketId: socket.id, userId });
+
+            // Presence registrieren
+            presenceService.registerUser(userId);
+
+            // Aktuellen Status senden
+            const status = presenceService.getStatus(userId);
+            if (status) {
+                socket.emit('presence-status', {
+                    state: status.state,
+                    timeOfDay: status.timeOfDay,
+                });
+            }
+
+            logger.info('User registered for notifications + presence', { socketId: socket.id, userId });
         });
 
         // Handle user message
@@ -144,6 +177,9 @@ export function initializeWebSocket(httpServer: HTTPServer): SocketIOServer {
                     messageLength: message.length,
                     conversationId,
                 });
+
+                // Presence: Aktivitaet melden
+                presenceService.recordActivity(userId, 'message');
 
                 // Get or create conversation
                 let currentConversationId = conversationId;
@@ -710,6 +746,13 @@ ${nextQuestion.isStageEnd ? '\n[Nach dieser Antwort: Fasse die Stufe kurz zusamm
                 // Join user-specific room for notifications
                 socket.join(`user:${userId}`);
 
+                // Presence registrieren (falls nicht schon via register-user)
+                if (!socketUserId) {
+                    socketUserId = userId;
+                    presenceService.registerUser(userId);
+                }
+                presenceService.recordActivity(userId, 'navigation');
+
                 const conversations = await getUserConversations(userId, includeLearning);
 
                 socket.emit('conversations-list', conversations);
@@ -948,10 +991,30 @@ ${nextQuestion.isStageEnd ? '\n[Nach dieser Antwort: Fasse die Stufe kurz zusamm
             voiceOrchestrator.endSession(socket.id);
         });
 
+        // ─── Presence: Manuellen Status setzen ───
+        socket.on('set-presence', (data: { status?: string }) => {
+            if (socketUserId) {
+                presenceService.setManualStatus(socketUserId, data.status as any);
+                const status = presenceService.getStatus(socketUserId);
+                if (status) {
+                    socket.emit('presence-status', {
+                        state: status.state,
+                        timeOfDay: status.timeOfDay,
+                    });
+                }
+            }
+        });
+
         // Handle disconnect
         socket.on('disconnect', () => {
             // Clean up voice session
             voiceOrchestrator.endSession(socket.id);
+
+            // Presence: User als offline markieren
+            if (socketUserId) {
+                presenceService.unregisterUser(socketUserId);
+            }
+
             logger.info('Client disconnected', { socketId: socket.id });
         });
     });

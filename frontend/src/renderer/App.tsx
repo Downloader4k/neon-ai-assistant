@@ -21,6 +21,26 @@ import DailySummary from './components/DailySummary';
 import AgentChains from './components/AgentChains';
 import CanvasBoard from './components/CanvasBoard';
 import LocalRAG from './components/LocalRAG';
+import { Component, type ReactNode, type ErrorInfo } from 'react';
+
+// Error Boundary fuer ProactiveNotifications (verhindert App-Crash)
+class ProactiveErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.warn('[ProactiveNotifications] Error caught by boundary:', error.message);
+  }
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
+
 import ProactiveNotifications from './components/ProactiveNotifications';
 import UserSwitcher from './components/UserSwitcher';
 import DiscoverPage from './components/DiscoverPage';
@@ -386,9 +406,7 @@ export default function App() {
 
       {/* Main Content */}
       <main className="app-main flex-1 flex flex-col relative overflow-hidden">
-        <div className="absolute top-4 right-4 z-50">
-          <ProactiveNotifications />
-        </div>
+        <ProactiveErrorBoundary><ProactiveNotifications /></ProactiveErrorBoundary>
 
         <div className="app-content flex-1 overflow-y-auto">
           {renderContent()}

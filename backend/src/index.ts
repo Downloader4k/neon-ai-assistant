@@ -130,6 +130,15 @@ async function start() {
             logger.error('Failed to start scheduler', { error });
         }
 
+        // Start Proactivity Loop (Begleiter-System)
+        try {
+            const { proactivityService } = await import('./services/proactive/ProactivityService');
+            proactivityService.startLoop(2 * 60 * 1000); // Alle 2 Minuten pruefen
+            logger.info('Proactivity service started (Begleiter-Modus)');
+        } catch (error) {
+            logger.warn('Proactivity service failed to start (will continue without it)', { error });
+        }
+
         // Start HTTP server
         httpServer.listen(PORT, () => {
             logger.info(`🚀 NEON Backend running on http://${HOST}:${PORT}`);

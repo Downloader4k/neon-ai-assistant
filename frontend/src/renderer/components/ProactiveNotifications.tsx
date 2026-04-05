@@ -1,100 +1,176 @@
-import { useState, useEffect, useRef } from 'react';
-import { Bell, X, Check } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { X, Check, Sparkles } from 'lucide-react';
 
 interface ProactiveMessage {
     id: string;
     type: string;
     content: string;
+    reason?: string;
+    priority?: string;
     createdAt: string;
 }
 
 export default function ProactiveNotifications() {
     const [messages, setMessages] = useState<ProactiveMessage[]>([]);
-    const [visible, setVisible] = useState(false);
-    const retryCount = useRef(0);
+    const [fadeOut, setFadeOut] = useState<string | null>(null);
 
-    const fetchPending = async () => {
+    const fetchPending = useCallback(async () => {
         try {
-            // Stop retrying if too many failures
-            if (retryCount.current > 3) return;
-
-            // Assuming default user
-            const userId = localStorage.getItem('userId') || 'default-user';
-
-            const res = await fetch(`http://localhost:3001/api/proactive/${userId}/pending`);
+            const userId = localStorage.getItem('neon-current-user-id') || 'default-user';
+            const res = await fetch(`/api/proactive/${userId}/pending`);
 
             if (!res.ok) {
-                retryCount.current += 1;
+                console.warn('[ProactiveNotifications] Fetch failed:', res.status);
                 return;
             }
 
             const data = await res.json();
-            retryCount.current = 0; // Reset on success
+            console.log('[ProactiveNotifications] Fetched:', data?.length || 0, 'messages');
 
             if (Array.isArray(data) && data.length > 0) {
-                setMessages(data);
-                setVisible(true);
+                setMessages((prev) => {
+                    const existingIds = new Set(prev.map((m) => m.id));
+                    const newMsgs = data.filter((m: ProactiveMessage) => !existingIds.has(m.id));
+                    if (newMsgs.length === 0) return prev;
+                    return [...prev, ...newMsgs];
+                });
             }
         } catch (error) {
-            console.error('Failed to fetch proactive messages', error);
-            retryCount.current += 1;
+            console.warn('[ProactiveNotifications] Fetch error:', error);
         }
-    };
-
-    const markAsRead = async (id: string) => {
-        try {
-            await fetch(`http://localhost:3001/api/proactive/${id}/trigger`, {
-                method: 'PATCH',
-            });
-            setMessages((prev) => prev.filter((m) => m.id !== id));
-        } catch (error) {
-            console.error('Failed to mark message', error);
-        }
-    };
-
-    useEffect(() => {
-        // Initial fetch
-        fetchPending();
-
-        // Loop every 5 min
-        const interval = setInterval(() => {
-            fetchPending();
-        }, 5 * 60 * 1000);
-
-        return () => clearInterval(interval);
     }, []);
 
-    if (!visible || messages.length === 0) {
-        return null;
-    }
+    useEffect(() => {
+        // Sofort laden
+        fetchPending();
+
+        // Nochmal nach 5 Sekunden (falls Backend noch Nachricht generiert)
+        const retryTimeout = setTimeout(fetchPending, 5000);
+
+        // Danach alle 15 Sekunden polling
+        const interval = setInterval(fetchPending, 15 * 1000);
+
+        return () => {
+            clearTimeout(retryTimeout);
+            clearInterval(interval);
+        };
+    }, [fetchPending]);
+
+    // WebSocket-Listener fuer Echtzeit-Push (nutzt den bestehenden Store-Socket)
+    useEffect(() => {
+        const handleProactiveMessage = (event: CustomEvent) => {
+            const data = event.detail as ProactiveMessage;
+            setMessages((prev) => {
+                if (prev.some((m) => m.id === data.id)) return prev;
+                return [...prev, data];
+            });
+        };
+
+        window.addEventListener('proactive-message' as any, handleProactiveMessage as any);
+        return () => window.removeEventListener('proactive-message' as any, handleProactiveMessage as any);
+    }, []);
+
+    const markAsRead = async (id: string) => {
+        setFadeOut(id);
+
+        setTimeout(async () => {
+            try {
+                await fetch(`/api/proactive/${id}/trigger`, { method: 'PATCH' });
+            } catch { /* ignore */ }
+
+            setMessages((prev) => prev.filter((m) => m.id !== id));
+            setFadeOut(null);
+        }, 300);
+    };
+
+    // Duplikate nach ID filtern (Race Condition zwischen REST und WebSocket)
+    const uniqueMessages = messages.filter((m, i, arr) => arr.findIndex((x) => x.id === m.id) === i);
+
+    if (uniqueMessages.length === 0) return null;
+
+    const getTypeIcon = (type: string) => {
+        switch (type) {
+            case 'greeting': return '👋';
+            case 'routine': return '📋';
+            case 'care': return '💛';
+            case 'suggestion': return '💡';
+            default: return '✨';
+        }
+    };
 
     return (
-        <div className="fixed top-20 right-6 w-96 z-50">
-            {messages.map((message) => (
+        <div style={{
+            position: 'fixed',
+            top: '80px',
+            right: '24px',
+            width: '380px',
+            zIndex: 9999,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            pointerEvents: 'auto',
+        }}>
+            {uniqueMessages.map((message) => (
                 <div
                     key={message.id}
-                    className="mb-3 bg-bg-secondary border-2 border-primary rounded-lg p-4 shadow-2xl animate-slide-in"
+                    style={{
+                        background: 'linear-gradient(135deg, rgba(30, 30, 35, 0.98), rgba(25, 25, 30, 0.95))',
+                        border: `2px solid ${message.priority === 'high' ? 'rgba(239, 68, 68, 0.6)' : 'rgba(249, 171, 0, 0.5)'}`,
+                        borderRadius: '16px',
+                        padding: '16px',
+                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(249, 171, 0, 0.1)',
+                        opacity: fadeOut === message.id ? 0 : 1,
+                        transform: fadeOut === message.id ? 'translateX(20px)' : 'translateX(0)',
+                        transition: 'opacity 0.3s, transform 0.3s',
+                        backdropFilter: 'blur(12px)',
+                    }}
                 >
-                    <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                            <Bell className="w-5 h-5 text-primary" />
-                            <span className="font-medium">NEON</span>
+                    {/* Header */}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: '10px',
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Sparkles style={{ width: '18px', height: '18px', color: '#f9ab00' }} />
+                            <span style={{ fontWeight: 600, fontSize: '14px', color: '#f9ab00', letterSpacing: '0.5px' }}>NEON</span>
+                            <span style={{ fontSize: '14px' }}>{getTypeIcon(message.type)}</span>
                         </div>
                         <button
                             onClick={() => markAsRead(message.id)}
-                            className="text-text-secondary hover:text-text-primary"
+                            style={{
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                color: '#888', padding: '4px', borderRadius: '50%',
+                                display: 'flex', alignItems: 'center',
+                            }}
                         >
-                            <X className="w-4 h-4" />
+                            <X style={{ width: '16px', height: '16px' }} />
                         </button>
                     </div>
 
-                    <p className="text-sm text-text-primary mb-3">{message.content}</p>
+                    {/* Message */}
+                    <p style={{
+                        fontSize: '14px', color: '#e0e0e0', lineHeight: '1.5',
+                        margin: '0 0 14px 0',
+                    }}>
+                        {message.content}
+                    </p>
 
+                    {/* Action Button */}
                     <button
                         onClick={() => markAsRead(message.id)}
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-primary hover:bg-primary/90 text-black font-medium rounded-lg transition-colors"
+                        style={{
+                            width: '100%', display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', gap: '8px', padding: '8px 16px',
+                            background: 'rgba(249, 171, 0, 0.15)',
+                            border: '1px solid rgba(249, 171, 0, 0.3)',
+                            borderRadius: '10px', color: '#f9ab00',
+                            fontWeight: 500, fontSize: '13px', cursor: 'pointer',
+                            transition: 'all 0.2s',
+                        }}
                     >
-                        <Check className="w-4 h-4" />
+                        <Check style={{ width: '14px', height: '14px' }} />
                         Verstanden
                     </button>
                 </div>

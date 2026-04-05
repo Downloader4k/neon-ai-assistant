@@ -253,6 +253,12 @@ export const useAppStore = create<AppState>((set, get) => ({
             set({ isTyping: false });
         });
 
+        // Proactive Messages: Socket → CustomEvent Bridge
+        socket.on('proactive-message', (data: any) => {
+            console.log('[Proactive] WebSocket message received:', data);
+            window.dispatchEvent(new CustomEvent('proactive-message', { detail: data }));
+        });
+
         set({ socket });
     },
 

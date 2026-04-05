@@ -23,5 +23,6 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src/renderer"),
     },
+    dedupe: ['react', 'react-dom'],
   },
 });
