@@ -498,12 +498,35 @@ ${nextQuestion.isStageEnd ? '\n[Nach dieser Antwort: Fasse die Stufe kurz zusamm
                     // OR we could append them here if they are sent as file type with content text.
                     // For now assuming attachments.content IS the text for files or base64 for images.
 
-                    if (images.length > 0) {
-                        logger.info('Handling image attachments - Vision Pipeline (Skipped in Streaming Phase - Handled in Context Phase)', { count: images.length });
-                        // We do NOT append vision context here again, as it was already injected in the Context Phase.
-                        // However, we might need to ensure the router knows about the images if we want to support multi-modal LLMs directly (e.g. Claude 3.5 Sonnet).
-                        // But currently we use Local Vision (LLaVA) -> Text Description -> LLM.
-                        // So we do nothing here.
+                    if (images.length > 0 && (!effectiveForceProvider || effectiveForceProvider === 'ollama')) {
+                        // Vision-Context wurde bereits in der Context Phase injiziert
+                        logger.info('Image vision context already injected from Context Phase');
+                    }
+
+                    // Bilder direkt an Claude schicken (nativ multimodal, viel bessere Vision)
+                    if (images.length > 0 && (!effectiveForceProvider || effectiveForceProvider === 'claude' || effectiveForceProvider === 'auto')) {
+                        logger.info('[Vision] Bilder direkt an Claude als multimodal content senden');
+                        const contentBlocks: Array<{ type: 'text'; text: string } | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }> = [];
+
+                        // Bilder hinzufügen
+                        for (const img of images) {
+                            const rawData = img.content || img.data || '';
+                            if (!rawData) continue;
+                            const base64Data = rawData.replace(/^data:image\/\w+;base64,/, '');
+                            const mimeType = img.mimeType || 'image/jpeg';
+                            contentBlocks.push({
+                                type: 'image',
+                                source: { type: 'base64', media_type: mimeType, data: base64Data },
+                            });
+                        }
+
+                        // Text-Nachricht hinzufügen
+                        const textContent = typeof finalPrompt === 'string' ? finalPrompt :
+                            (Array.isArray(finalPrompt) ? finalPrompt.find((b: any) => b.type === 'text')?.text || '' : '');
+                        contentBlocks.push({ type: 'text', text: textContent || 'Beschreibe was du auf dem Bild siehst.' });
+
+                        finalPrompt = contentBlocks;
+                        effectiveForceProvider = 'claude'; // Claude für multimodal erzwingen
                     }
 
                     // Handle text files if necessary (append to text)
