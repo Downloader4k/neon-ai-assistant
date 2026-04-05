@@ -2,12 +2,34 @@
 
 > Persoenlicher Hybrid-KI-Assistent mit 5-Schichten-Gedaechtnis, intelligentem Modell-Routing (Claude + Ollama), Sprachein-/ausgabe, Todo-/Einkaufs-/Kalenderverwaltung und 30+ Features
 
+![Status](https://img.shields.io/badge/Status-Beta-orange)
+![Platform](https://img.shields.io/badge/Platform-Windows%2011-0078D6)
 ![Node](https://img.shields.io/badge/Node-20+-green)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5+-blue)
 ![React](https://img.shields.io/badge/React-18+-61dafb)
+![Claude](https://img.shields.io/badge/AI-Claude%20%2B%20Ollama-blueviolet)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
 NEON ist ein vollstaendiger KI-Assistent als Web-App, der Claude AI und lokale LLMs (Ollama/Gemma3) kombiniert. Das System routet Anfragen intelligent zwischen Cloud und lokal, merkt sich Kontext ueber ein 5-schichtiges Gedaechtnissystem und bietet zahlreiche Funktionen, die ueber einen normalen Chatbot hinausgehen.
+
+### Screenshots
+
+| Chat | Kalender | Todos & Einkauf |
+|:---:|:---:|:---:|
+| ![Chat](docs/screenshots/chat-overview.png) | ![Kalender](docs/screenshots/kalender.png) | ![Todos](docs/screenshots/todos-einkauf.png) |
+
+---
+
+## Warum NEON?
+
+| | Typische Chat-Apps | NEON |
+|---|---|---|
+| **KI-Modell** | Ein Anbieter (Cloud) | Hybrid: Claude (komplex) + Ollama (schnell/privat) |
+| **Gedaechtnis** | Nur Chat-Verlauf | 5-Schichten-Memory mit Decay, Konsolidierung und Promotion |
+| **Alltag** | Nur Chat | Todos, Einkaufslisten, Kalender, Wetter — alles per Chat oder UI |
+| **Privatspheare** | Alles in der Cloud | Lokale LLMs fuer private Anfragen, SQLite auf deinem Rechner |
+| **Erweiterbar** | Geschlossenes System | Skill Marketplace, Agenten-Ketten, Code-Ausfuehrung |
+| **Zugriff** | Nur ein Geraet | Web-App im LAN von jedem Geraet erreichbar |
 
 ---
 
@@ -24,7 +46,7 @@ NEON ist ein vollstaendiger KI-Assistent als Web-App, der Claude AI und lokale L
 
 ```bash
 # Repository klonen
-git clone https://github.com/Neon-OpenClaw/neon-ai-assistant.git
+git clone https://github.com/Downloader4k/neon-ai-assistant.git
 cd neon-ai-assistant
 
 # Dependencies installieren
