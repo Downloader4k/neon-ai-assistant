@@ -266,9 +266,13 @@ class ProactivityService {
         const eveningKey = presenceService.getTodayKey('evening');
 
         // ─── Begrüßung nach Rückkehr (AI-generiert) ───
-        if (input.presence.previousState === 'offline' || input.presence.previousState === 'idle') {
-            const idleMinutes = (Date.now() - input.presence.stateChangedAt) / 60000;
-            if (idleMinutes < 5) {
+        // Nur auslösen wenn der User tatsächlich kürzlich zurückgekehrt ist (State-Wechsel < 5 Min)
+        // UND der vorherige State offline/idle war
+        const stateChangedMinutesAgo = (Date.now() - input.presence.stateChangedAt) / 60000;
+        const wasAbsent = input.presence.previousState === 'offline' || input.presence.previousState === 'idle';
+        if (wasAbsent && stateChangedMinutesAgo < 5 && input.presence.state === 'available') {
+            const returnKey = presenceService.getTodayKey('presence_return');
+            if (!presenceService.hasCheckinDone(input.userId, returnKey)) {
                 const contextParts: string[] = [];
                 contextParts.push(`User: ${input.userName}`);
                 contextParts.push(`Tageszeit: ${this.getTimeOfDayLabel(hour)}`);
@@ -290,7 +294,7 @@ class ProactivityService {
 
                 candidates.push({
                     score: 0.8,
-                    message: '', // Wird von AI generiert
+                    message: '',
                     reason: 'presence_return',
                     type: 'greeting',
                     priority: 'medium',
@@ -532,6 +536,7 @@ class ProactivityService {
 
     private markCheckinForReason(reason: string | undefined, userId: string): void {
         const map: Record<string, string> = {
+            'presence_return': 'presence_return',
             'morning_checkin': 'morning',
             'evening_summary': 'evening',
             'late_night': 'late',

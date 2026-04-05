@@ -1,23 +1,44 @@
 import { Router } from 'express';
 import { prisma } from '../services/db/prisma';
 import { presenceService } from '../services/presence/PresenceService';
+import { logger } from '../utils/logger';
 
 const router = Router();
 
-// Get pending notifications
+// Get pending notifications — marks as read+delivered so they NEVER return again
 router.get('/:userId/pending', async (req, res) => {
     try {
         const { userId } = req.params;
+        logger.info(`[Proactive API] GET pending for ${userId}`);
+
+        // Prevent browser caching — proactive messages must always be fresh
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+        res.set('Pragma', 'no-cache');
+        res.set('Expires', '0');
+
         const messages = await prisma.proactiveMessage.findMany({
             where: {
                 userId,
                 read: false,
-                deliveredAt: { equals: null }, // Only undelivered
             },
             orderBy: { generatedAt: 'desc' },
+            take: 3,
         });
+
+        logger.info(`[Proactive API] Found ${messages.length} unread for ${userId}`);
+
+        // Sofort als read+delivered markieren — einmal angezeigt = erledigt
+        if (messages.length > 0) {
+            await prisma.proactiveMessage.updateMany({
+                where: { id: { in: messages.map(m => m.id) } },
+                data: { read: true, deliveredAt: new Date() },
+            });
+            logger.info(`[Proactive API] Marked ${messages.length} as read+delivered`);
+        }
+
         res.json(messages);
     } catch (error) {
+        logger.error('[Proactive API] Failed', { error });
         res.status(500).json({ error: 'Failed' });
     }
 });

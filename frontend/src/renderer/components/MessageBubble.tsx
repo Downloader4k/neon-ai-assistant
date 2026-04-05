@@ -14,6 +14,21 @@ interface MessageBubbleProps {
     message: Message;
 }
 
+// Resolve image source: Base64 data-URL (live) or server path (persisted)
+const BACKEND_URL = window.location.port === '5173'
+    ? `http://${window.location.hostname}:3001`
+    : window.location.origin;
+
+function resolveImageSrc(content: string): string {
+    if (!content) return '';
+    // Already a data URL (base64) — use as-is
+    if (content.startsWith('data:')) return content;
+    // Already a full URL
+    if (content.startsWith('http://') || content.startsWith('https://')) return content;
+    // Relative path from server (e.g. /uploads/images/...)
+    return `${BACKEND_URL}${content}`;
+}
+
 function MessageBubble({ message }: MessageBubbleProps) {
     const isUser = message.role === 'user';
     const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -141,10 +156,10 @@ function MessageBubble({ message }: MessageBubbleProps) {
                                 <div key={i} className="group/att relative rounded-lg overflow-hidden border border-border/50 bg-bg-tertiary/50">
                                     {att.type === 'image' ? (
                                         <img
-                                            src={att.content}
+                                            src={resolveImageSrc(att.content)}
                                             alt={att.name}
                                             className="max-w-[300px] max-h-[300px] object-cover transition-transform hover:scale-[1.02] cursor-pointer"
-                                            onClick={() => window.open(att.content, '_blank')}
+                                            onClick={() => window.open(resolveImageSrc(att.content), '_blank')}
                                         />
                                     ) : (
                                         <div className="flex items-center gap-3 p-3 min-w-[200px]">

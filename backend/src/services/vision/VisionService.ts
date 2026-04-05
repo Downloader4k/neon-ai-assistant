@@ -1,4 +1,5 @@
 
+import axios from 'axios';
 import { ollamaService } from '../ollama/OllamaService';
 import { logger } from '../../utils/logger';
 
@@ -18,6 +19,8 @@ export class VisionService {
      */
     async analyzeImage(base64Image: string, prompt: string = ''): Promise<string> {
         try {
+            logger.info(`[Vision] Start Bildanalyse, base64-Länge: ${base64Image.length} Zeichen`);
+
             // Prüfe ob das Vision-Modell verfügbar ist
             const available = await this.checkVisionModel();
             if (!available) {
@@ -29,14 +32,15 @@ export class VisionService {
                 ? prompt
                 : "Beschreibe dieses Bild detailliert aber prägnant auf Deutsch. Fokussiere dich auf das Hauptmotiv, Farben und Text falls vorhanden. Erfinde keinen Text der nicht sichtbar ist.";
 
-            logger.info(`[Vision] Sende Bild an ${this.visionModel}...`);
+            logger.info(`[Vision] Sende Bild an ${this.visionModel} (Timeout: 180s, Safety-Layer: deaktiviert)...`);
 
             const response = await ollamaService.chat(
                 systemInstruction,
                 [],
                 this.visionModel,
-                "", // Kein System-Prompt, nur die Bildbeschreibung
-                [base64Image]
+                null, // Kein System-Prompt für Vision
+                [base64Image],
+                { skipSafetyLayer: true, timeoutMs: 180000 } // Vision braucht länger, kein Safety-Prompt
             );
 
             if (response.content && response.content.trim().length > 10) {
@@ -57,8 +61,9 @@ export class VisionService {
      */
     private async checkVisionModel(): Promise<boolean> {
         try {
-            const response = await fetch('http://localhost:11434/api/tags');
-            const data = await response.json() as { models: Array<{ name: string }> };
+            const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
+            const response = await axios.get(`${ollamaUrl}/api/tags`, { timeout: 5000 });
+            const data = response.data as { models: Array<{ name: string }> };
             const installedModels = data.models.map((m: { name: string }) => m.name);
 
             // Prüfe ob das konfigurierte Modell vorhanden ist

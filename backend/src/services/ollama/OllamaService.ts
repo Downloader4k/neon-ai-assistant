@@ -130,7 +130,8 @@ export class OllamaService {
         conversationHistory: OllamaMessage[] = [],
         modelOverride?: string, // Allow overriding model for specific calls (e.g. vision)
         systemPromptOverride?: string | null, // Allow overriding system prompt (pass null/empty to skip default)
-        images?: string[] // Optional images for vision models
+        images?: string[], // Optional images for vision models
+        options?: { skipSafetyLayer?: boolean; timeoutMs?: number } // Extra options
     ): Promise<OllamaResponse> {
         try {
             const validModel = modelOverride || this.model;
@@ -154,6 +155,10 @@ export class OllamaService {
             messages.push(...conversationHistory);
 
             // HARD-CODED SAFETY LAYER: Inject critical reminder before EVERY user message
+            // Skip for vision requests — the safety prompt confuses vision models
+            if (options?.skipSafetyLayer) {
+                logger.debug('Skipping safety layer (vision/special request)');
+            } else {
             messages.push({
                 role: 'system',
                 content: `⚠️ KRITISCHE REGELN (IMMER BEFOLGEN):
@@ -182,6 +187,7 @@ SPRACHE:
 - Verwende nur existierende, korrekte deutsche Woerter.
 - Mache KEINE Annahmen ueber Wetter, Jahreszeit oder Dinge, die der Nutzer nicht erwaehnt hat.`
             });
+            } // end safety layer
 
             messages.push({ role: 'user', content: message, ...(images && { images }) });
 
@@ -196,7 +202,7 @@ SPRACHE:
                 model: validModel,
                 messages: messages,
                 stream: false,
-            });
+            }, options?.timeoutMs ? { timeout: options.timeoutMs } : undefined);
 
             const content = response.data.message?.content || '';
             const tokensGenerated = response.data.eval_count || 0;

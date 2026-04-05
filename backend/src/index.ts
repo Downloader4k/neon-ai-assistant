@@ -33,6 +33,12 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public'))); // Serve static files from /public
+app.use('/uploads', (req, res, next) => {
+    // Override helmet's Cross-Origin-Resource-Policy for uploads
+    // so the frontend on a different port can load images
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+}, express.static(path.join(__dirname, '../uploads'))); // Serve uploaded images
 app.use(express.urlencoded({ extended: true }));
 
 // Security: Rate Limiting & Input Sanitization
@@ -130,14 +136,15 @@ async function start() {
             logger.error('Failed to start scheduler', { error });
         }
 
-        // Start Proactivity Loop (Begleiter-System)
-        try {
-            const { proactivityService } = await import('./services/proactive/ProactivityService');
-            proactivityService.startLoop(2 * 60 * 1000); // Alle 2 Minuten pruefen
-            logger.info('Proactivity service started (Begleiter-Modus)');
-        } catch (error) {
-            logger.warn('Proactivity service failed to start (will continue without it)', { error });
-        }
+        // Proaktive Benachrichtigungen deaktiviert — Feature noch nicht ausgereift
+        // try {
+        //     const { proactivityService } = await import('./services/proactive/ProactivityService');
+        //     proactivityService.startLoop(2 * 60 * 1000);
+        //     logger.info('Proactivity service started (Begleiter-Modus)');
+        // } catch (error) {
+        //     logger.warn('Proactivity service failed to start (will continue without it)', { error });
+        // }
+        logger.info('Proactivity service DISABLED (Feature deaktiviert)');
 
         // Start HTTP server
         httpServer.listen(PORT, () => {

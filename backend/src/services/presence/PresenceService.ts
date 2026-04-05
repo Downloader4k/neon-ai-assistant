@@ -76,7 +76,7 @@ class PresenceService extends EventEmitter {
         } else {
             const status: PresenceStatus = {
                 state: 'available',
-                previousState: 'offline',
+                previousState: 'available', // Nicht 'offline' — verhindert dass decide() sofort Rückkehr-Trigger feuert
                 since: now,
                 timeOfDay: this.getTimeOfDay(),
                 stateChangedAt: now,
@@ -92,13 +92,11 @@ class PresenceService extends EventEmitter {
                 },
                 status,
                 checkinsDone: new Set(),
-                lastProactiveAt: 0,
+                lastProactiveAt: now, // Cooldown startet sofort — verhindert Spam nach Backend-Neustart
             });
 
-            // Erster Besuch nach Backend-Neustart: Nur 1x senden, nicht bei jedem Refresh
-            // Wir setzen lastProactiveAt auf jetzt, damit der Cooldown greift
-            // und emittieren presence-return nur einmal
-            this.emit('presence-return', { userId, previousState: 'offline', newState: 'available' });
+            // KEIN presence-return bei Erstregistrierung — verhindert Spam
+            logger.info(`[Presence] Neuer User ${userId} registriert, KEIN presence-return`);
         }
 
         logger.info(`[Presence] User ${userId} registered, state: ${this.getStatus(userId)?.state}`);
@@ -140,19 +138,13 @@ class PresenceService extends EventEmitter {
         const previousState = data.status.state;
         this.updateState(userId);
 
-        // State-Wechsel emittieren
+        // State-Wechsel emittieren (NICHT presence-return — das macht nur registerUser mit 2-Min-Check)
         if (previousState !== data.status.state) {
             this.emit('state-change', {
                 userId,
                 previousState,
                 newState: data.status.state,
             });
-
-            // Rueckkehr erkennen
-            if ((previousState === 'offline' || previousState === 'idle') &&
-                (data.status.state === 'available' || data.status.state === 'focused')) {
-                this.emit('presence-return', { userId, previousState, newState: data.status.state });
-            }
         }
     }
 

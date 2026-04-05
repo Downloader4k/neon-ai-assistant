@@ -406,7 +406,8 @@ export default function App() {
 
       {/* Main Content */}
       <main className="app-main flex-1 flex flex-col relative overflow-hidden">
-        <ProactiveErrorBoundary><ProactiveNotifications /></ProactiveErrorBoundary>
+        {/* Proaktive Benachrichtigungen deaktiviert — Feature noch nicht ausgereift */}
+        {/* <ProactiveErrorBoundary><ProactiveNotifications /></ProactiveErrorBoundary> */}
 
         <div className="app-content flex-1 overflow-y-auto">
           {renderContent()}

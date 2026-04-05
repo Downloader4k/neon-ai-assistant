@@ -23,7 +23,9 @@ export default function ProactiveNotifications() {
     const fetchPending = useCallback(async () => {
         try {
             const userId = localStorage.getItem('neon-current-user-id') || 'default-user';
-            const res = await fetch(`/api/proactive/${userId}/pending`);
+            const res = await fetch(`/api/proactive/${userId}/pending?_t=${Date.now()}`, {
+                cache: 'no-store',
+            });
 
             if (!res.ok) {
                 console.warn('[ProactiveNotifications] Fetch failed:', res.status);
@@ -47,18 +49,15 @@ export default function ProactiveNotifications() {
     }, []);
 
     useEffect(() => {
-        // Sofort laden
+        // Einmal beim Mount laden (fängt Nachrichten auf die während Offline kamen)
         fetchPending();
 
-        // Nochmal nach 5 Sekunden (falls Backend noch Nachricht generiert)
+        // Einmal nach 5s nochmal (falls Backend noch AI-Nachricht generiert)
         const retryTimeout = setTimeout(fetchPending, 5000);
 
-        // Danach alle 15 Sekunden polling
-        const interval = setInterval(fetchPending, 15 * 1000);
-
+        // KEIN Polling mehr — neue Nachrichten kommen über WebSocket Push
         return () => {
             clearTimeout(retryTimeout);
-            clearInterval(interval);
         };
     }, [fetchPending]);
 

@@ -2,6 +2,8 @@ import { Server as SocketIOServer, Socket } from 'socket.io';
 import { Server as HTTPServer } from 'http';
 import { aiRouter, AIProvider } from '../services/router/AIRouter';
 import { ClaudeContent } from '../services/claude/ClaudeService';
+import * as fs from 'fs';
+import * as path from 'path';
 import {
     createConversation,
     createMessage,
@@ -123,22 +125,18 @@ export function initializeWebSocket(httpServer: HTTPServer): SocketIOServer {
             origin: process.env.FRONTEND_URL || 'http://localhost:5173',
             methods: ['GET', 'POST'],
             credentials: true
-        }
+        },
+        maxHttpBufferSize: 10 * 1024 * 1024, // 10MB — erlaubt große Bilder über WebSocket
     });
 
     ioInstance = io;
 
-    // Proactivity Service mit IO-Instanz verbinden
-    proactivityService.setIO(io);
-
-    // Presence-Return Listener: Bei Rueckkehr proaktiv melden
-    presenceService.on('presence-return', async ({ userId, previousState, newState }) => {
-        logger.info(`[Presence] User ${userId} returned: ${previousState} → ${newState}`);
-        // Kurz warten damit der Client die Verbindung aufgebaut hat
-        setTimeout(() => {
-            proactivityService.triggerForUser(userId);
-        }, 3000);
-    });
+    // Proaktive Benachrichtigungen deaktiviert — Feature noch nicht ausgereift
+    // proactivityService.setIO(io);
+    // presenceService.on('presence-return', async ({ userId, previousState, newState }) => {
+    //     logger.info(`[Presence] User ${userId} returned: ${previousState} → ${newState}`);
+    //     setTimeout(() => { proactivityService.triggerForUser(userId); }, 3000);
+    // });
 
     io.on('connection', (socket: Socket) => {
         logger.info('Client connected', { socketId: socket.id });
@@ -173,12 +171,20 @@ export function initializeWebSocket(httpServer: HTTPServer): SocketIOServer {
         // Handle user message
         socket.on('user-message', async (data) => {
             try {
-                const { message, attachments, conversationId, userId, forceProvider } = data;
+                let { message, attachments, conversationId, userId, forceProvider } = data;
+
+                // Wenn der User nur ein Bild schickt ohne Text, setze Default-Nachricht
+                const hasImages = attachments?.some((a: any) => a.type === 'image');
+                if ((!message || !message.trim()) && hasImages) {
+                    message = 'Beschreibe was auf dem Bild zu sehen ist.';
+                    logger.info('[Vision] Leere Nachricht mit Bild → Default-Prompt gesetzt');
+                }
 
                 logger.info('Received user message', {
                     socketId: socket.id,
-                    messageLength: message.length,
+                    messageLength: message?.length || 0,
                     conversationId,
+                    hasAttachments: !!attachments?.length,
                 });
 
                 // Presence: Aktivitaet melden
@@ -210,11 +216,51 @@ export function initializeWebSocket(httpServer: HTTPServer): SocketIOServer {
 
 
 
-                // Save user message
+                // Save attachments to disk and build metadata
+                let attachmentMetadata: any[] | undefined;
+                if (data.attachments && data.attachments.length > 0) {
+                    attachmentMetadata = [];
+                    const uploadsDir = path.resolve(__dirname, '../../uploads/images');
+                    // Ensure directory exists
+                    if (!fs.existsSync(uploadsDir)) {
+                        fs.mkdirSync(uploadsDir, { recursive: true });
+                    }
+                    for (const att of data.attachments) {
+                        if (att.type === 'image') {
+                            const rawData = att.content || att.data || '';
+                            if (!rawData) continue;
+                            // Generate unique filename
+                            const fileId = `img_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+                            const ext = (att.mimeType || 'image/png').split('/')[1] || 'png';
+                            const fileName = `${fileId}.${ext}`;
+                            const filePath = path.join(uploadsDir, fileName);
+                            // Strip data URL prefix and save
+                            const base64Clean = rawData.replace(/^data:image\/\w+;base64,/, '');
+                            fs.writeFileSync(filePath, Buffer.from(base64Clean, 'base64'));
+                            attachmentMetadata.push({
+                                type: 'image',
+                                name: att.name || fileName,
+                                mimeType: att.mimeType || 'image/png',
+                                filePath: `/uploads/images/${fileName}`,
+                            });
+                            logger.info(`[Attachments] Saved image: ${fileName}`);
+                        } else {
+                            // Non-image files: store reference only
+                            attachmentMetadata.push({
+                                type: att.type || 'file',
+                                name: att.name || 'unknown',
+                                mimeType: att.mimeType || 'text/plain',
+                            });
+                        }
+                    }
+                }
+
+                // Save user message with attachment metadata
                 const userMessage = await createMessage({
                     conversationId: currentConversationId,
                     role: 'user',
                     content: message,
+                    metadata: attachmentMetadata ? { attachments: attachmentMetadata } : undefined,
                 });
 
                 // Index user message for semantic search (non-blocking)
@@ -257,49 +303,63 @@ export function initializeWebSocket(httpServer: HTTPServer): SocketIOServer {
                 const { isLearning } = data;
 
                 // 2. Handle Attachments (Vision Pipeline)
-                if (data.attachments && data.attachments.length > 0) {
+                // Prüfe ob Vision lokal laufen soll
+                const { aiRouter: aiRouterCheck } = await import('../services/router/AIRouter');
+                const visionProviderSetting = (aiRouterCheck as any).config?.visionProvider || 'local';
+                const hasImageAttachments = data.attachments?.some((a: { type: string }) => a.type === 'image');
+
+                if (hasImageAttachments && visionProviderSetting === 'local') {
                     try {
-                        logger.info('Processing attachments', { count: data.attachments.length, types: data.attachments.map((a: { type: string }) => a.type) });
+                        const imageAttachments = data.attachments.filter((a: { type: string }) => a.type === 'image');
+                        logger.info('[Vision] Starte lokale Bildanalyse', { count: imageAttachments.length });
 
-                        // Filter for images
-                        const images = data.attachments.filter((a: { type: string }) => a.type === 'image');
+                        // Sende Status-Update an Frontend
+                        socket.emit('typing-indicator', { isTyping: true });
 
-                        if (images.length > 0) {
-                            logger.info('Handling image attachments - Vision Pipeline');
+                        // Initialize Vision Service
+                        const { visionService } = await import('../services/vision/VisionService');
 
-                            // Initialize Vision Service
-                            const { visionService } = await import('../services/vision/VisionService');
-
-                            // Process images sequentially
-                            const descriptions: string[] = [];
-                            for (let i = 0; i < images.length; i++) {
-                                const img = images[i];
-                                // Prepare base64 string (remove data URL prefix if present)
-                                // Frontend might send 'content' or 'data' depending on implementation
-                                const rawData = img.content || img.data || '';
-                                if (!rawData) {
-                                    logger.warn(`Image ${i + 1} has no content/data`);
-                                    continue;
-                                }
-                                const base64Data = rawData.replace(/^data:image\/\w+;base64,/, '');
-
-                                logger.info(`Analyzing image ${i + 1}/${images.length}...`);
-                                const desc = await visionService.analyzeImage(base64Data);
-                                descriptions.push(`[BILD ${i + 1} ANALYSE]:\n ${desc}`);
+                        const descriptions: string[] = [];
+                        for (let i = 0; i < imageAttachments.length; i++) {
+                            const img = imageAttachments[i];
+                            const rawData = img.content || img.data || '';
+                            if (!rawData) {
+                                logger.warn(`[Vision] Bild ${i + 1} hat keine Daten`);
+                                continue;
                             }
+                            const base64Data = rawData.replace(/^data:image\/\w+;base64,/, '');
 
-                            if (descriptions.length > 0) {
-                                visionContext = `--- VISION KONTEXT ---\nDas System hat folgende Bilder analysiert und beschrieben:\n${descriptions.join('\n\n')}\n----------------------`;
+                            logger.info(`[Vision] Analysiere Bild ${i + 1}/${imageAttachments.length}, base64 Länge: ${base64Data.length}`);
+
+                            // User-Prompt für Vision: Falls der User Text geschickt hat, nutze diesen
+                            const userVisionPrompt = message.trim()
+                                ? `Der Nutzer fragt: "${message}"\n\nBeschreibe das Bild und beantworte die Frage auf Deutsch.`
+                                : '';
+
+                            const desc = await visionService.analyzeImage(base64Data, userVisionPrompt);
+                            logger.info(`[Vision] Bild ${i + 1} Ergebnis (erste 200 Zeichen): ${desc.substring(0, 200)}`);
+
+                            // Prüfe ob es ein Fehler war
+                            if (desc.startsWith('[FEHLER')) {
+                                logger.error(`[Vision] Bild ${i + 1} Analyse fehlgeschlagen: ${desc}`);
+                                descriptions.push(`[BILD ${i + 1}]: Bildanalyse fehlgeschlagen — ${desc}`);
+                            } else {
+                                descriptions.push(`[BILD ${i + 1} ANALYSE]:\n${desc}`);
                             }
-
-                            logger.info('Vision analysis complete');
                         }
+
+                        if (descriptions.length > 0) {
+                            visionContext = `--- VISION KONTEXT ---\nDas System hat folgende Bilder analysiert und beschrieben:\n${descriptions.join('\n\n')}\n--- ENDE VISION KONTEXT ---\n\nWICHTIG: Beziehe dich auf die Bildanalyse oben in deiner Antwort. Antworte IMMER auf Deutsch.`;
+                        }
+
+                        logger.info('[Vision] Lokale Analyse abgeschlossen', { hasContext: !!visionContext });
                     } catch (err: any) {
-                        logger.error('Failed to process attachments', {
+                        logger.error('[Vision] Pipeline komplett fehlgeschlagen', {
                             message: err.message,
-                            stack: err.stack,
-                            fullError: JSON.stringify(err, Object.getOwnPropertyNames(err))
+                            stack: err.stack
                         });
+                        // Fallback: Informiere den User auf Deutsch
+                        visionContext = `--- VISION KONTEXT ---\n[FEHLER: Die lokale Bildanalyse ist fehlgeschlagen. Bitte dem Nutzer mitteilen, dass das Bild nicht analysiert werden konnte.]\n--- ENDE VISION KONTEXT ---\n\nAntworte auf Deutsch und sage dem Nutzer freundlich, dass die Bildanalyse gerade nicht funktioniert.`;
                     }
                 }
 
@@ -491,44 +551,33 @@ ${nextQuestion.isStageEnd ? '\n[Nach dieser Antwort: Fasse die Stufe kurz zusamm
                 let effectiveForceProvider = forceProvider;
 
                 if (attachments && attachments.length > 0) {
-                    logger.info('Processing attachments', { count: attachments.length, types: attachments.map((a: any) => a.type) });
-
                     const images = attachments.filter((a: any) => a.type === 'image');
-                    // Files (text) might be already handled by frontend sending content, 
-                    // OR we could append them here if they are sent as file type with content text.
-                    // For now assuming attachments.content IS the text for files or base64 for images.
 
-                    if (images.length > 0) {
-                        // Prüfe ob Claude-Vision in den Einstellungen aktiviert ist
-                        const { aiRouter } = await import('../services/router/AIRouter');
-                        const visionProvider = (aiRouter as any).config?.visionProvider || 'local';
+                    if (images.length > 0 && visionProviderSetting === 'claude') {
+                        // Claude Vision: Bilder direkt als multimodal Content an Claude
+                        logger.info('[Vision] Bilder direkt an Claude (Einstellung: claude)');
+                        const contentBlocks: Array<{ type: 'text'; text: string } | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }> = [];
 
-                        if (visionProvider === 'claude') {
-                            // Bilder direkt an Claude als multimodal Content
-                            logger.info('[Vision] Bilder direkt an Claude (Einstellung: claude)');
-                            const contentBlocks: Array<{ type: 'text'; text: string } | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }> = [];
-
-                            for (const img of images) {
-                                const rawData = img.content || img.data || '';
-                                if (!rawData) continue;
-                                const base64Data = rawData.replace(/^data:image\/\w+;base64,/, '');
-                                const mimeType = img.mimeType || 'image/jpeg';
-                                contentBlocks.push({
-                                    type: 'image',
-                                    source: { type: 'base64', media_type: mimeType, data: base64Data },
-                                });
-                            }
-
-                            const textContent = typeof finalPrompt === 'string' ? finalPrompt :
-                                (Array.isArray(finalPrompt) ? finalPrompt.find((b: any) => b.type === 'text')?.text || '' : '');
-                            contentBlocks.push({ type: 'text', text: textContent || 'Beschreibe was du auf dem Bild siehst.' });
-
-                            finalPrompt = contentBlocks;
-                            effectiveForceProvider = 'claude';
-                        } else {
-                            // Lokal (default): Vision-Context wurde bereits in Context Phase injiziert
-                            logger.info('[Vision] Lokale Analyse bereits im Kontext (Einstellung: local)');
+                        for (const img of images) {
+                            const rawData = img.content || img.data || '';
+                            if (!rawData) continue;
+                            const base64Data = rawData.replace(/^data:image\/\w+;base64,/, '');
+                            const mimeType = img.mimeType || 'image/jpeg';
+                            contentBlocks.push({
+                                type: 'image',
+                                source: { type: 'base64', media_type: mimeType, data: base64Data },
+                            });
                         }
+
+                        const textContent = typeof finalPrompt === 'string' ? finalPrompt :
+                            (Array.isArray(finalPrompt) ? finalPrompt.find((b: any) => b.type === 'text')?.text || '' : '');
+                        contentBlocks.push({ type: 'text', text: textContent || 'Beschreibe was du auf dem Bild siehst.' });
+
+                        finalPrompt = contentBlocks;
+                        effectiveForceProvider = 'claude';
+                    } else if (images.length > 0 && visionProviderSetting === 'local') {
+                        // Lokal: Vision-Context wurde bereits oben durch VisionService injiziert
+                        logger.info('[Vision] Lokale Analyse bereits im Kontext vorhanden:', { hasVisionContext: !!visionContext });
                     }
 
                     // Handle text files if necessary (append to text)
@@ -806,7 +855,33 @@ ${nextQuestion.isStageEnd ? '\n[Nach dieser Antwort: Fasse die Stufe kurz zusamm
                 const conversation = await getConversation(conversationId);
 
                 if (conversation) {
-                    socket.emit('conversation-data', conversation);
+                    // Enrich messages with attachment data from metadata
+                    const enrichedMessages = conversation.messages.map((msg: any) => {
+                        if (msg.metadata) {
+                            try {
+                                const meta = typeof msg.metadata === 'string' ? JSON.parse(msg.metadata) : msg.metadata;
+                                if (meta.attachments && Array.isArray(meta.attachments)) {
+                                    // Convert file paths to full URLs for the frontend
+                                    msg.attachments = meta.attachments.map((att: any) => {
+                                        if (att.type === 'image' && att.filePath) {
+                                            return {
+                                                type: 'image',
+                                                name: att.name,
+                                                mimeType: att.mimeType,
+                                                // Content is now a URL to the served file
+                                                content: att.filePath,
+                                            };
+                                        }
+                                        return att;
+                                    });
+                                }
+                            } catch (e) {
+                                // Ignore parse errors in metadata
+                            }
+                        }
+                        return msg;
+                    });
+                    socket.emit('conversation-data', { ...conversation, messages: enrichedMessages });
                 } else {
                     socket.emit('error', {
                         message: 'Conversation not found',
