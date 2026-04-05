@@ -145,8 +145,26 @@ router.put('/:userId/:id', async (req, res) => {
     }
 });
 
+// DELETE /api/memory/:id
+// Soft delete by memory ID only (no userId required — e.g. called from intent handler)
+router.delete('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        await prisma.memoryEntry.update({
+            where: { id },
+            data: { isActive: false }
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('Failed to delete memory by id', error);
+        res.status(500).json({ error: 'Failed to delete memory' });
+    }
+});
+
 // DELETE /api/memory/:userId/:id
-// Soft delete memory
+// Soft delete memory (with userId ownership check)
 router.delete('/:userId/:id', async (req, res) => {
     try {
         const { userId, id } = req.params;

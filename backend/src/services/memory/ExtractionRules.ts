@@ -187,7 +187,17 @@ export const EXTRACTION_RULES: ExtractionRule[] = [
 ];
 
 /**
- * Apply extraction rules to text
+ * Apply extraction rules to text.
+ *
+ * Negative (NONE) rules no longer abort the entire message. Instead they
+ * act as content-level filters: if the *extracted* content itself matches a
+ * negative pattern it is dropped, but other positive extractions from the
+ * same message are kept.
+ *
+ * Example: "Ich bin 28 Jahre alt und gehe gleich essen"
+ *   - personal_age  → extracts "Nutzer ist 28 Jahre alt"  ✓ kept
+ *   - temporal_plan → matches "gleich essen", but "Nutzer ist 28 Jahre alt"
+ *                     does not match the temporal pattern  ✓ not filtered
  */
 export function applyExtractionRules(text: string): Array<{
     content: string;
@@ -197,29 +207,41 @@ export function applyExtractionRules(text: string): Array<{
 }> {
     const results: Array<{ content: string; type: string; confidence: number; source: string }> = [];
 
+    // Step 1: collect all NONE patterns that match the message text
+    const matchedNonePatterns: RegExp[] = [];
     for (const rule of EXTRACTION_RULES) {
-        let matches = false;
-
-        if (rule.pattern instanceof RegExp) {
-            matches = rule.pattern.test(text);
-        } else {
-            matches = rule.pattern(text);
+        if (rule.memoryType !== 'NONE') continue;
+        const matches = rule.pattern instanceof RegExp
+            ? rule.pattern.test(text)
+            : rule.pattern(text);
+        if (matches && rule.pattern instanceof RegExp) {
+            matchedNonePatterns.push(rule.pattern);
         }
+    }
 
-        if (matches && rule.memoryType !== 'NONE') {
-            const extracted = rule.extract(text);
-            if (extracted) {
-                results.push({
-                    content: extracted,
-                    type: rule.memoryType,
-                    confidence: rule.confidence,
-                    source: 'rule-based'
-                });
-            }
-        } else if (matches && rule.memoryType === 'NONE') {
-            // Negative filter - stop processing
-            return [];
-        }
+    // Step 2: run positive rules and filter extracted content against NONE patterns
+    for (const rule of EXTRACTION_RULES) {
+        if (rule.memoryType === 'NONE') continue;
+
+        const matches = rule.pattern instanceof RegExp
+            ? rule.pattern.test(text)
+            : rule.pattern(text);
+
+        if (!matches) continue;
+
+        const extracted = rule.extract(text);
+        if (!extracted) continue;
+
+        // Drop this extraction if the extracted content itself contains a blocked pattern
+        const isBlocked = matchedNonePatterns.some(p => p.test(extracted));
+        if (isBlocked) continue;
+
+        results.push({
+            content: extracted,
+            type: rule.memoryType,
+            confidence: rule.confidence,
+            source: 'rule-based'
+        });
     }
 
     return results;

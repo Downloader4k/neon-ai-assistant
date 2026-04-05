@@ -190,6 +190,45 @@ export function initializeWebSocket(httpServer: HTTPServer): SocketIOServer {
                 // Presence: Aktivitaet melden
                 presenceService.recordActivity(userId, 'message');
 
+                // ─── KORREKTUR-INTENT HANDLER ────────────────────────────────────
+                // Erkennt Aussagen wie "Das stimmt nicht" / "Vergiss das" und
+                // deaktiviert die betroffene Memory per Embedding-Suche.
+                const correctionPatterns = [
+                    /\b(das\s+stimmt\s+nicht|stimmt\s+nicht|das\s+ist\s+falsch|das\s+war\s+falsch)\b/i,
+                    /\b(vergiss\s+(das|bitte|das\s+bitte))\b/i,
+                    /\b(das\s+ist\s+nicht\s+(richtig|korrekt|wahr))\b/i,
+                    /\b(nicht\s+korrekt|falsch\s+gespeichert|falsche\s+information)\b/i,
+                    /\b(lösch\s+(das|diese\s+information|diesen\s+eintrag))\b/i,
+                    /\b(that('s| is)\s+(wrong|incorrect|not right)|forget\s+that)\b/i,
+                ];
+                const isCorrectionIntent = correctionPatterns.some(p => p.test(message));
+
+                if (isCorrectionIntent) {
+                    try {
+                        const { embeddingService: embSvc } = await import('../services/memory/EmbeddingService');
+                        const { prisma: prismaDb } = await import('../services/db/prisma');
+
+                        // Suche die relevanteste Memory via Embedding (hoher Threshold damit nur echte Treffer)
+                        const candidates = await embSvc.searchSimilar(message, 1, 0.45);
+                        if (candidates.length > 0) {
+                            const targetId = candidates[0].id;
+                            const entry = await prismaDb.memoryEntry.findUnique({ where: { id: targetId } });
+
+                            // Nur deaktivieren wenn die Memory dem selben User gehört
+                            if (entry && entry.userId === userId) {
+                                await prismaDb.memoryEntry.update({
+                                    where: { id: targetId },
+                                    data: { isActive: false }
+                                });
+                                logger.info(`[CorrectionIntent] Memory deaktiviert: "${entry.content}" (id: ${targetId})`);
+                            }
+                        }
+                    } catch (corrErr) {
+                        logger.error('[CorrectionIntent] Fehler beim Deaktivieren der Memory', corrErr);
+                    }
+                }
+                // ────────────────────────────────────────────────────────────────
+
                 // Get or create conversation
                 let currentConversationId = conversationId;
 
