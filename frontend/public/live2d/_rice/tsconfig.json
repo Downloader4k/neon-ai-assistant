@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": false,
+    "sourceMap": true,
+    "newLine": "LF",
+    "removeComments": true,
+    "moduleResolution": "node",
+    "downlevelIteration": true,
+    "target": "es5",
+    "module": "esnext"
+  },
+  "include": [
+    "./src/**/*",
+    "./CubismWebSamples/Core/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

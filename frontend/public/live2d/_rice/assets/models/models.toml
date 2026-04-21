@@ -1,0 +1,15 @@
+[[models]]
+name = "Rice"
+scale = 1
+enablebreathing = true
+billboarding=false
+[models.canvasOffset]
+x = -0.25
+[models.position]
+y = 0
+[models.hitInfo]
+HitAreaBody = "TapBody"
+
+[[global]]
+allowModeSwitch = true
+startupMode = 0
