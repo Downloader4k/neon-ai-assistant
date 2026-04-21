@@ -280,6 +280,23 @@ input:-webkit-autofill:active {
     animation: slideIn 0.3s ease-out;
 }
 
+/* Neon Avatar Animations */
+@keyframes bounce-subtle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+}
+@keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 15px rgba(245,158,11,0.4); }
+    50% { box-shadow: 0 0 25px rgba(245,158,11,0.7); }
+}
+@keyframes avatar-fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-bounce-subtle { animation: bounce-subtle 1.5s ease-in-out; }
+.animate-pulse-glow { animation: pulse-glow 1.5s ease-in-out infinite; }
+.animate-fade-in { animation: avatar-fade-in 0.3s ease-out; }
+
 /* Emoji Picker Customization */
 /* Emoji Picker Customization */
 .emoji-picker-custom {

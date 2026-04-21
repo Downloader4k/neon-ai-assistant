@@ -42,6 +42,7 @@ class ProactiveErrorBoundary extends Component<{ children: ReactNode }, { hasErr
 }
 
 import ProactiveNotifications from './components/ProactiveNotifications';
+import NeonAvatar from './components/NeonAvatar';
 import UserSwitcher from './components/UserSwitcher';
 import DiscoverPage from './components/DiscoverPage';
 import MorningBriefing from './components/MorningBriefing';
@@ -55,15 +56,13 @@ import MemoryInspector from './components/MemoryInspector';
 import SkillMarketplace from './components/SkillMarketplace';
 import ListManager from './components/ListManager';
 import CalendarView from './components/CalendarView';
-import VoiceChatModal from './components/VoiceChatModal';
+import VoiceChatPage from './components/VoiceChatPage';
 import './index.css';
 
 export default function App() {
   const initializeSocket = useAppStore((state) => state.initializeSocket);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
-  const [voiceChatOpen, setVoiceChatOpen] = useState(false);
-
   const activeView = useAppStore((state) => state.activeView);
   const setActiveView = useAppStore((state) => state.setActiveView);
   const activeConversation = useAppStore((state) => state.currentConversation?.id || null);
@@ -187,6 +186,7 @@ export default function App() {
       case 'skill-store': return <SkillMarketplace />;
       case 'lists': return <ListManager />;
       case 'calendar': return <CalendarView />;
+      case 'voice': return <VoiceChatPage />;
       default: return <WelcomeScreen onStartChat={startNewChat} />;
     }
   };
@@ -218,13 +218,22 @@ export default function App() {
 
             <div className="flex items-center gap-1">
               {sidebarOpen && (
-                <button
-                  className="icon-btn-ghost hover:bg-bg-hover"
-                  onClick={() => startNewChat()}
-                  title="Neuer Chat"
-                >
-                  <SquarePen size={20} className="text-text-secondary" />
-                </button>
+                <>
+                  <button
+                    className="icon-btn-ghost hover:bg-bg-hover"
+                    onClick={() => startNewChat()}
+                    title="Neuer Chat"
+                  >
+                    <SquarePen size={20} className="text-text-secondary" />
+                  </button>
+                  <button
+                    className={`icon-btn-ghost hover:bg-bg-hover ${activeView === 'voice' ? 'voice-mic-active' : ''}`}
+                    onClick={() => setActiveView('voice')}
+                    title="Voice Chat"
+                  >
+                    <Mic size={20} className={activeView === 'voice' ? 'text-accent' : 'text-text-secondary'} />
+                  </button>
+                </>
               )}
 
               <button
@@ -238,13 +247,20 @@ export default function App() {
           </div>
 
           {!sidebarOpen && (
-            <div className="mt-4 px-2 flex justify-center">
+            <div className="mt-4 px-2 flex flex-col items-center gap-2">
               <button
                 className="new-chat-btn-modern justify-center px-0 w-10 h-10"
                 onClick={() => startNewChat()}
                 title="Neuer Chat"
               >
                 <SquarePen size={20} />
+              </button>
+              <button
+                className={`new-chat-btn-modern justify-center px-0 w-10 h-10 ${activeView === 'voice' ? 'voice-mic-active' : ''}`}
+                onClick={() => setActiveView('voice')}
+                title="Voice Chat"
+              >
+                <Mic size={20} className={activeView === 'voice' ? 'text-accent' : ''} />
               </button>
             </div>
           )}
@@ -330,18 +346,6 @@ export default function App() {
 
         {/* Bottom Section */}
         <div className="sidebar-bottom-section mt-auto py-2 border-t border-border-subtle">
-          {/* Voice Chat Button */}
-          <div className="px-2 mb-1">
-            <button
-              className={`nav-item w-full voice-chat-nav-btn ${!sidebarOpen ? 'justify-center px-0' : ''}`}
-              onClick={() => setVoiceChatOpen(true)}
-              title="Voice Chat"
-            >
-              <Mic size={20} />
-              {sidebarOpen && <span className="ml-3">Voice Chat</span>}
-            </button>
-          </div>
-
           {/* Tools Group */}
           <div className="tools-group px-2 mb-1">
             <button
@@ -414,6 +418,8 @@ export default function App() {
         </div>
       </main>
 
+      {/* Desktop Avatar entfernt — Orb ist jetzt nur auf der Voice-Seite */}
+
       {/* CONTEXT MENU PORTAL/OVERLAY */}
       {contextMenu && (
         <div
@@ -458,9 +464,6 @@ export default function App() {
           </button>
         </div>
       )}
-
-      {/* Voice Chat Modal */}
-      <VoiceChatModal isOpen={voiceChatOpen} onClose={() => setVoiceChatOpen(false)} />
 
       <style>{`
         .app-layout {
@@ -620,14 +623,9 @@ export default function App() {
         .text-text-tertiary { color: var(--text-tertiary); }
         .hover\\:bg-bg-hover:hover { background: var(--bg-hover); }
 
-        .voice-chat-nav-btn {
-            background: linear-gradient(135deg, rgba(249,171,0,0.08), rgba(249,171,0,0.02)) !important;
-            border: 1px solid rgba(249,171,0,0.15) !important;
-        }
-        .voice-chat-nav-btn:hover {
-            background: linear-gradient(135deg, rgba(249,171,0,0.15), rgba(249,171,0,0.05)) !important;
-            border-color: rgba(249,171,0,0.3) !important;
-            color: #f9ab00 !important;
+        .voice-mic-active {
+            background: rgba(249,171,0,0.12) !important;
+            border-radius: var(--radius-sm);
         }
 
         .fade-in { animation: fadeIn 0.2s ease-in; }

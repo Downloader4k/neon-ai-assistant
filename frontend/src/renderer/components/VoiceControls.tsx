@@ -184,7 +184,10 @@ export default function VoiceControls({ onTranscript }: VoiceControlsProps) {
 
         if (isTTSActive) {
             speakingPollRef.current = setInterval(() => {
-                setIsSpeaking(textToSpeechService.isSpeaking());
+                const speaking = textToSpeechService.isSpeaking();
+                setIsSpeaking(speaking);
+                // Dispatch events for NeonAvatar lip sync
+                window.dispatchEvent(new Event(speaking ? 'neon-tts-start' : 'neon-tts-end'));
             }, 200);
         } else {
             if (speakingPollRef.current) {
@@ -192,6 +195,7 @@ export default function VoiceControls({ onTranscript }: VoiceControlsProps) {
                 speakingPollRef.current = null;
             }
             setIsSpeaking(false);
+            window.dispatchEvent(new Event('neon-tts-end'));
         }
         return () => {
             if (speakingPollRef.current) clearInterval(speakingPollRef.current);

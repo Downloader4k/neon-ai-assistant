@@ -4,6 +4,7 @@ import { logger } from '../utils/logger';
 import { voiceOrchestrator } from '../services/voice/VoiceSessionOrchestrator';
 import { sttService } from '../services/voice/STTService';
 import { ttsService } from '../services/voice/TTSService';
+import { customVoicesStore } from '../services/voice/CustomVoicesStore';
 import { DEFAULT_AUDIO_CONFIG } from '../services/voice/AudioUtils';
 
 const router = Router();
@@ -27,9 +28,10 @@ router.get('/status', (_req, res) => {
  * GET /api/voice/tts/voices
  * Available TTS voices
  */
-router.get('/tts/voices', async (_req, res) => {
+router.get('/tts/voices', async (req, res) => {
     try {
-        const voices = await ttsService.getVoices();
+        const refresh = req.query.refresh === '1' || req.query.refresh === 'true';
+        const voices = await ttsService.getVoices(refresh);
         const status = ttsService.getStatus();
         res.json({
             backend: status.backend,
@@ -48,16 +50,63 @@ router.get('/tts/voices', async (_req, res) => {
  */
 router.post('/tts/set-voice', async (req, res) => {
     try {
-        const { voice } = req.body;
+        const { voice, backend } = req.body;
         if (!voice) {
             res.status(400).json({ error: 'Kein Voice-Name angegeben' });
             return;
         }
-        await ttsService.setVoice(voice);
-        res.json({ success: true, voice });
+        await ttsService.setVoice(voice, backend);
+        res.json({ success: true, voice, backend: backend || undefined });
     } catch (error) {
         logger.error('Failed to set TTS voice', { error });
         res.status(500).json({ error: 'Fehler beim Setzen der Stimme' });
+    }
+});
+
+/**
+ * GET /api/voice/tts/voices-all
+ * Liefert sowohl Edge-TTS als auch ElevenLabs-Voices
+ */
+router.get('/tts/voices-all', async (req, res) => {
+    try {
+        const refresh = req.query.refresh === '1' || req.query.refresh === 'true';
+        const status = ttsService.getStatus();
+        // Aktuelle Voices
+        const current = await ttsService.getVoices(refresh);
+
+        // Wenn beide Backends verfuegbar, die andere Liste auch liefern
+        const otherBackend = status.backend === 'elevenlabs' ? 'edge-tts' : 'elevenlabs';
+        let otherVoices: any[] = [];
+
+        if (otherBackend === 'elevenlabs' && status.elevenLabsReady) {
+            // ElevenLabs-Voices separat anfragen
+            const prevBackend = status.backend;
+            ttsService.updateConfig({ backend: 'elevenlabs' });
+            try {
+                otherVoices = await ttsService.getVoices(refresh);
+            } catch (e) { /* ignore */ }
+            // zurueckschalten
+            ttsService.updateConfig({ backend: prevBackend });
+            await ttsService.initialize();
+        } else if (otherBackend === 'edge-tts') {
+            const prevBackend = status.backend;
+            ttsService.updateConfig({ backend: 'edge-tts' });
+            try {
+                otherVoices = await ttsService.getVoices(refresh);
+            } catch (e) { /* ignore */ }
+            ttsService.updateConfig({ backend: prevBackend });
+            await ttsService.initialize();
+        }
+
+        res.json({
+            currentBackend: status.backend,
+            currentVoice: status.voice,
+            elevenLabsReady: status.elevenLabsReady,
+            voices: [...current, ...otherVoices],
+        });
+    } catch (error) {
+        logger.error('Failed to get all voices', { error });
+        res.status(500).json({ error: 'Fehler beim Laden der Stimmen' });
     }
 });
 
@@ -94,6 +143,63 @@ router.post('/tts/synthesize', async (req, res) => {
     } catch (error) {
         logger.error('TTS synthesis error', { error });
         res.status(500).json({ error: 'TTS-Synthese fehlgeschlagen' });
+    }
+});
+
+/**
+ * POST /api/voice/tts/stream
+ * Streaming TTS: liefert MP3-Chunks sobald ElevenLabs sie erzeugt
+ * (chunked transfer encoding). Der Client kann sofort abspielen -
+ * deutlich niedrigere wahrgenommene Latenz als /synthesize.
+ * Body: { text: string, voice?: string }
+ */
+router.post('/tts/synthesize-stream', async (req, res) => {
+    try {
+        const { text, voice } = req.body;
+        if (!text) {
+            res.status(400).json({ error: 'Kein Text angegeben' });
+            return;
+        }
+
+        const { stream, backend, voiceId } = await ttsService.synthesizeStream(
+            text,
+            voice ? { voice } : undefined,
+        );
+
+        res.setHeader('Content-Type', 'audio/mpeg');
+        res.setHeader('Transfer-Encoding', 'chunked');
+        res.setHeader('X-TTS-Backend', backend);
+        res.setHeader('X-TTS-Voice', voiceId);
+        res.setHeader('Cache-Control', 'no-cache');
+        // Wichtig: kein Buffering durch evtl. Reverse-Proxies
+        res.setHeader('X-Accel-Buffering', 'no');
+
+        let bytesSent = 0;
+        stream.on('data', (chunk: Buffer) => {
+            bytesSent += chunk.length;
+            res.write(chunk);
+        });
+        stream.on('end', () => {
+            logger.info(`[TTS] Stream fertig, ${(bytesSent / 1024).toFixed(1)}KB gesendet`);
+            res.end();
+        });
+        stream.on('error', (err: any) => {
+            logger.error('[TTS] Stream error', { err: err?.message || err });
+            if (!res.headersSent) res.status(500);
+            res.end();
+        });
+
+        // Client hat abgebrochen (z.B. Stop-Button, Barge-in) → Stream sauber beenden
+        req.on('close', () => {
+            try { (stream as any).destroy?.(); } catch { /* ignore */ }
+        });
+    } catch (error: any) {
+        logger.error('TTS stream error', { error: error?.message || error });
+        if (!res.headersSent) {
+            res.status(500).json({ error: error?.message || 'TTS-Streaming fehlgeschlagen' });
+        } else {
+            res.end();
+        }
     }
 });
 
@@ -135,6 +241,97 @@ router.post('/stt/transcribe', upload.single('audio'), async (req, res) => {
     } catch (error) {
         logger.error('STT error', { error });
         res.status(500).json({ error: 'STT-Verarbeitung fehlgeschlagen' });
+    }
+});
+
+/**
+ * GET /api/voice/tts/custom-voices
+ * Liefert die persistent gespeicherten User-Custom-Voices (backend/data/custom-voices.json).
+ */
+router.get('/tts/custom-voices', (_req, res) => {
+    try {
+        res.json({ voices: customVoicesStore.list() });
+    } catch (error) {
+        logger.error('Custom-Voices lesen fehlgeschlagen', { error });
+        res.status(500).json({ error: 'Custom-Voices lesen fehlgeschlagen' });
+    }
+});
+
+/**
+ * POST /api/voice/tts/custom-voices
+ * Body: { name?: string, voiceId: string, locale?: string, gender?: string }
+ * Fuegt eine Voice-ID hinzu (oder aktualisiert existing Eintrag mit gleicher voiceId).
+ */
+router.post('/tts/custom-voices', (req, res) => {
+    try {
+        const { name, voiceId, locale, gender } = req.body || {};
+        if (!voiceId || typeof voiceId !== 'string') {
+            res.status(400).json({ error: 'voiceId ist erforderlich' });
+            return;
+        }
+        const entry = customVoicesStore.add({ name: name || '', voiceId, locale, gender });
+        // Voice-Cache invalidieren damit die neue Stimme sofort in getVoices() auftaucht
+        ttsService.clearVoicesCache();
+        res.json({ success: true, voice: entry, voices: customVoicesStore.list() });
+    } catch (error: any) {
+        logger.error('Custom-Voice hinzufuegen fehlgeschlagen', { error });
+        res.status(500).json({ error: error?.message || 'Custom-Voice hinzufuegen fehlgeschlagen' });
+    }
+});
+
+/**
+ * DELETE /api/voice/tts/custom-voices/:voiceId
+ * Entfernt eine User-Custom-Voice aus der Liste.
+ */
+router.delete('/tts/custom-voices/:voiceId', (req, res) => {
+    try {
+        const { voiceId } = req.params;
+        if (!voiceId) {
+            res.status(400).json({ error: 'voiceId fehlt' });
+            return;
+        }
+        const removed = customVoicesStore.remove(voiceId);
+        ttsService.clearVoicesCache();
+        res.json({ success: true, removed, voices: customVoicesStore.list() });
+    } catch (error) {
+        logger.error('Custom-Voice entfernen fehlgeschlagen', { error });
+        res.status(500).json({ error: 'Custom-Voice entfernen fehlgeschlagen' });
+    }
+});
+
+/**
+ * POST /api/voice/tts/voice-settings
+ * Voice-Feinschliff: Preset oder custom Stability/Style/SimilarityBoost/SpeakerBoost
+ * Body: { preset?: 'standard'|'warm'|'dramatic'|'whisper'|'clear'|'custom', settings?: { stability, similarity_boost, style, use_speaker_boost } }
+ */
+router.post('/tts/voice-settings', async (req, res) => {
+    try {
+        const { preset, settings } = req.body || {};
+        if (preset) {
+            ttsService.setElevenLabsPreset(preset, settings);
+        } else if (settings) {
+            ttsService.updateConfig({
+                elevenLabsPreset: 'custom',
+                elevenLabsVoiceSettings: {
+                    stability: settings.stability ?? 0.5,
+                    similarity_boost: settings.similarity_boost ?? 0.75,
+                    style: settings.style ?? 0.0,
+                    use_speaker_boost: settings.use_speaker_boost ?? true,
+                },
+            });
+        } else {
+            res.status(400).json({ error: 'preset oder settings erforderlich' });
+            return;
+        }
+        const status = ttsService.getStatus();
+        res.json({
+            success: true,
+            preset: status.elevenLabsPreset,
+            settings: status.elevenLabsVoiceSettings,
+        });
+    } catch (error) {
+        logger.error('Voice settings error', { error });
+        res.status(500).json({ error: 'Voice-Settings fehlgeschlagen' });
     }
 });
 

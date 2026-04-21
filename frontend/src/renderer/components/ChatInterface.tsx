@@ -5,10 +5,11 @@ import ChatInput, { ChatInputHandle } from './ChatInput';
 import TypingIndicator from './TypingIndicator';
 import SearchingIndicator from './SearchingIndicator';
 import ExportDropdown from './ExportDropdown';
-import { Upload } from 'lucide-react';
+import { Upload, Mic } from 'lucide-react';
 
 export default function ChatInterface() {
     const currentConversation = useAppStore((state) => state.currentConversation);
+    const setActiveView = useAppStore((state) => state.setActiveView);
     // Use local messages only if they belong to current conversation, otherwise empty
     const messages = currentConversation?.messages || [];
     const isTyping = useAppStore((state) => state.isTyping);
@@ -84,7 +85,17 @@ export default function ChatInterface() {
             {currentConversation && currentConversation.messages.length > 0 && (
                 <div className="chat-header-bar">
                     <span className="chat-header-title">{currentConversation.title || 'Unterhaltung'}</span>
-                    <ExportDropdown />
+                    <div className="chat-header-actions">
+                        <button
+                            className="chat-voice-btn"
+                            onClick={() => setActiveView('voice')}
+                            title="Voice Chat oeffnen"
+                        >
+                            <Mic size={16} />
+                            <span>Voice</span>
+                        </button>
+                        <ExportDropdown />
+                    </div>
                     <style>{`
                         .chat-header-bar {
                             display: flex;
@@ -104,6 +115,29 @@ export default function ChatInterface() {
                             white-space: nowrap;
                             flex: 1;
                             margin-right: 0.75rem;
+                        }
+                        .chat-header-actions {
+                            display: flex;
+                            align-items: center;
+                            gap: 0.5rem;
+                        }
+                        .chat-voice-btn {
+                            display: flex;
+                            align-items: center;
+                            gap: 6px;
+                            padding: 6px 12px;
+                            background: transparent;
+                            border: 1px solid rgba(249,171,0,0.2);
+                            border-radius: 8px;
+                            color: #f9ab00;
+                            font-size: 13px;
+                            font-weight: 500;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        }
+                        .chat-voice-btn:hover {
+                            background: rgba(249,171,0,0.1);
+                            border-color: rgba(249,171,0,0.4);
                         }
                     `}</style>
                 </div>

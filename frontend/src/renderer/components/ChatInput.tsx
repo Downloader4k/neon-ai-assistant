@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { AttachmentMenu } from './AttachmentMenu';
 import { EmojiMenu } from './EmojiMenu';
-import VoiceControls from './VoiceControls';
+// VoiceControls wurde entfernt — Voice-Chat ist jetzt eine eigene Seite
 
 export interface ChatInputHandle {
     addFiles: (files: File[]) => void;
@@ -433,11 +433,6 @@ const ChatInput = forwardRef<ChatInputHandle>((_props, ref) => {
         }
     };
 
-    // Spracheingabe: Transkript in Eingabefeld einfuegen
-    const handleVoiceTranscript = useCallback((text: string) => {
-        setInput(prev => prev ? prev + ' ' + text : text);
-    }, []);
-
     const handleEmojiClick = (emoji: string) => {
         const textarea = textareaRef.current;
         if (!textarea) {
@@ -572,7 +567,6 @@ const ChatInput = forwardRef<ChatInputHandle>((_props, ref) => {
                         onEmojiClick={handleEmojiClick}
                         direction="up"
                     />
-                    <VoiceControls onTranscript={handleVoiceTranscript} />
                 </div>
                 <textarea
                     ref={textareaRef}
