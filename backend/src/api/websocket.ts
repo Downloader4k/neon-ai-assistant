@@ -670,18 +670,38 @@ ${nextQuestion.isStageEnd ? '\n[Nach dieser Antwort: Fasse die Stufe kurz zusamm
                     );
 
                     // Extract memory entries from text context for fact-checking
-                    const memoryEntries = [];
+                    const memoryEntries: Array<{ type: string; content: string }> = [];
 
-                    // Parse long-term context (has format like [TYPE] content)
+                    // Parse Memory 2.0 sectioned format:
+                    //   FAKTEN:\n- content\n- content\n\nVORLIEBEN:\n- content
+                    // Falls back to legacy [TYPE] content format.
                     if (memoryContext.longTermContext) {
-                        const lines = memoryContext.longTermContext.split('\n');
-                        for (const line of lines) {
-                            const match = line.match(/^\[([A-Z_]+)\]\s*(.+)$/);
-                            if (match) {
-                                memoryEntries.push({
-                                    type: match[1].toLowerCase(),
-                                    content: match[2]
-                                });
+                        const sectionToType: Record<string, string> = {
+                            'FAKTEN': 'fact',
+                            'VORLIEBEN': 'preference',
+                            'AKTUELLE PROJEKTE': 'project',
+                            'LETZTE EREIGNISSE': 'episodic',
+                            'SYSTEM-REGELN': 'instruction',
+                        };
+                        let currentType: string | null = null;
+                        for (const raw of memoryContext.longTermContext.split('\n')) {
+                            const line = raw.trim();
+                            if (!line) continue;
+                            // Sektion-Header?
+                            const header = line.replace(/:$/, '').toUpperCase();
+                            if (sectionToType[header]) {
+                                currentType = sectionToType[header];
+                                continue;
+                            }
+                            // Bullet unter aktueller Sektion
+                            if (currentType && line.startsWith('- ')) {
+                                memoryEntries.push({ type: currentType, content: line.slice(2).trim() });
+                                continue;
+                            }
+                            // Legacy-Fallback: [TYPE] content
+                            const legacy = line.match(/^-?\s*\[([A-Z_]+)\]\s*(.+)$/);
+                            if (legacy) {
+                                memoryEntries.push({ type: legacy[1].toLowerCase(), content: legacy[2] });
                             }
                         }
                     }
@@ -1017,39 +1037,33 @@ ${nextQuestion.isStageEnd ? '\n[Nach dieser Antwort: Fasse die Stufe kurz zusamm
                                 result += `• ${searchResults[i].title}: ${searchResults[i].snippet}\n`;
                             }
                         }
-                        // Recherche-Ergebnisse als semantisches Wissen speichern
+                        // Recherche-Ergebnisse als FACT speichern (ueber MemoryGatekeeper)
                         try {
-                            const { prisma } = await import('../services/db/prisma');
+                            const { memoryGatekeeper } = await import('../services/memory/MemoryGatekeeper');
 
-                            // Hauptergebnis als Memory speichern
-                            const memoryContent = `[Recherche: ${topic}] ${searchResults[0].title}: ${searchResults[0].snippet}`;
-                            await prisma.memoryEntry.create({
-                                data: {
+                            // Kompakte Zusammenfassung statt komplettem Snippet-Dump
+                            const candidates = [
+                                { snippet: searchResults[0].snippet, title: searchResults[0].title, imp: 0.7 },
+                                ...searchResults.slice(1, 3).map(r => ({ snippet: r.snippet, title: r.title, imp: 0.55 })),
+                            ];
+                            let saved = 0, blocked = 0;
+                            for (const c of candidates) {
+                                // Sinnvolle 1-Satz-Zusammenfassung statt Muell-Dump
+                                const body = (c.snippet || '').split(/(?<=[.!?])\s+/)[0]?.trim() || c.title;
+                                const content = `${topic}: ${body}`.slice(0, 280);
+                                const res = await memoryGatekeeper.save({
                                     userId: userId || 'default-user',
                                     type: 'FACT',
-                                    content: memoryContent.substring(0, 1000),
-                                    importanceScore: 0.8,
-                                    isActive: true,
-                                },
-                            });
-
-                            // Weitere Quellen als einzelne Memories speichern
-                            for (let i = 1; i < Math.min(searchResults.length, 3); i++) {
-                                const extraContent = `[Recherche: ${topic}] ${searchResults[i].title}: ${searchResults[i].snippet}`;
-                                await prisma.memoryEntry.create({
-                                    data: {
-                                        userId: userId || 'default-user',
-                                        type: 'FACT',
-                                        content: extraContent.substring(0, 1000),
-                                        importanceScore: 0.6,
-                                        isActive: true,
-                                    },
+                                    content,
+                                    summary: content.slice(0, 100),
+                                    importance: c.imp,
+                                    tags: ['recherche', topic.toLowerCase().replace(/\s+/g, '-').slice(0, 30)],
                                 });
+                                if (res.status === 'created' || res.status === 'replaced' || res.status === 'merged') saved++;
+                                else blocked++;
                             }
-
-                            const savedCount = Math.min(searchResults.length, 3);
-                            result += `\n✅ ${savedCount} Wissenseinträge im Gedächtnis gespeichert.`;
-                            logger.info(`Saved ${savedCount} memory entries from research on "${topic}"`);
+                            result += `\n✅ ${saved} Wissenseinträge gespeichert${blocked ? ` (${blocked} vom Gatekeeper gefiltert)` : ''}.`;
+                            logger.info(`[Research] topic="${topic}" saved=${saved} blocked=${blocked}`);
                         } catch (memError) {
                             logger.error('Failed to save research to memory', { memError });
                             result += `\n⚠️ Ergebnisse konnten nicht im Gedächtnis gespeichert werden.`;

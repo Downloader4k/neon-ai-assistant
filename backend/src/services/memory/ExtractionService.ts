@@ -2,6 +2,8 @@ import { PrismaClient } from '@prisma/client';
 import { applyExtractionRules } from './ExtractionRules';
 import { embeddingService } from './EmbeddingService';
 import { logger } from '../../utils/logger';
+import { memoryGatekeeper } from './MemoryGatekeeper';
+import { normalizeType } from './MemoryTypes';
 
 // ... interface ...
 
@@ -553,61 +555,33 @@ Antworte NUR als JSON:
                 }
             });
 
-            // Save each memory with embedding
+            // Alle Writes gehen durch den MemoryGatekeeper (Memory 2.0).
+            // Der kuemmert sich um Content-Guard, Dedup, Conflict-Resolution + Embedding + Tags.
+            const stats = { created: 0, replaced: 0, merged: 0, skipped: 0, blocked: 0 };
             for (const memory of uniqueMemories) {
-                const entry = await this.prisma.memoryEntry.create({
-                    data: {
-                        userId,
-                        type: memory.type,
-                        content: memory.content,
-                        summary: memory.content.substring(0, 100), // First 100 chars
-                        importanceScore: memory.importance,
-                        sourceExtractionId: extraction.id
-                    }
+                const res = await memoryGatekeeper.save({
+                    userId,
+                    type: normalizeType(memory.type),
+                    content: memory.content,
+                    summary: memory.content.substring(0, 100),
+                    importance: memory.importance,
+                    tags: memory.tags,
+                    sourceExtractionId: extraction.id,
                 });
+                stats[res.status] = (stats[res.status] ?? 0) + 1;
 
-                // Generate and store embedding
-                const embedding = await this.embeddingService.embed(memory.content);
-                await this.embeddingService.storeEmbedding(entry.id, embedding);
-
-                // Save embedding reference in Prisma
-                await this.prisma.memoryEmbedding.create({
-                    data: {
-                        memoryEntryId: entry.id,
-                        vector: JSON.stringify(embedding),
-                        modelName: 'nomic-embed-text'
+                // Relation-Detection nur bei echten Neuanlagen
+                if (res.status === 'created' && res.entryId) {
+                    try {
+                        const { relationService } = await import('./RelationService');
+                        await relationService.detectRelations(res.entryId, memory.content);
+                    } catch (error) {
+                        console.error('[Extraction] Relation detection failed:', error);
                     }
-                });
-
-                // Check for semantic relations (Phase 7)
-                try {
-                    const { relationService } = await import('./RelationService');
-                    await relationService.detectRelations(entry.id, memory.content);
-                } catch (error) {
-                    console.error('[Extraction] Relation detection failed:', error);
-                }
-
-                // Add tags
-                for (const tagName of memory.tags) {
-                    const tag = await this.prisma.memoryTag.upsert({
-                        where: { name: tagName },
-                        update: {},
-                        create: { name: tagName }
-                    });
-
-                    // Link tag to memory
-                    await this.prisma.memoryEntry.update({
-                        where: { id: entry.id },
-                        data: {
-                            tags: {
-                                connect: { id: tag.id }
-                            }
-                        }
-                    });
                 }
             }
 
-            logger.info(`[Extraction] Saved ${uniqueMemories.length} memories for conversation ${conversationId}`);
+            logger.info(`[Extraction] Gatekeeper-Stats fuer ${conversationId}: ${JSON.stringify(stats)}`);
         } catch (error) {
             logger.error('[Extraction] Failed to save memories:', error);
             throw error;

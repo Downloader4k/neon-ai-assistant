@@ -2,39 +2,40 @@
 import { Router } from 'express';
 import { prisma } from '../services/db/prisma';
 import { logger } from '../utils/logger';
+import { memoryGatekeeper } from '../services/memory/MemoryGatekeeper';
 const router = Router();
 
 // POST /api/memory
-// Create a new memory entry
+// Create a new memory entry (via MemoryGatekeeper - Memory 2.0)
 router.post('/', async (req, res) => {
     try {
-        const { userId, content, type, importanceScore } = req.body;
+        const { userId, content, type, importanceScore, summary, tags } = req.body;
 
         if (!userId || !content) {
             res.status(400).json({ error: 'userId und content sind erforderlich' });
             return;
         }
 
-        const entry = await prisma.memoryEntry.create({
-            data: {
-                userId,
-                type: (type || 'FACT').toUpperCase(),
-                content,
-                importanceScore: importanceScore || 0.7,
-                isActive: true,
-            },
+        const result = await memoryGatekeeper.save({
+            userId,
+            type: type || 'FACT',
+            content,
+            summary,
+            importance: importanceScore ?? 0.7,
+            tags: Array.isArray(tags) ? tags : undefined,
         });
 
-        // Generate embedding
-        try {
-            const { embeddingService } = await import('../services/memory/EmbeddingService');
-            const embedding = await embeddingService.embed(content);
-            await embeddingService.storeEmbedding(entry.id, embedding);
-        } catch (err) {
-            logger.warn('Failed to generate embedding for new memory', { id: entry.id });
+        if (result.status === 'blocked' || result.status === 'skipped') {
+            res.status(422).json({
+                success: false,
+                status: result.status,
+                reason: result.reason,
+                hint: 'Content wurde vom Gatekeeper abgelehnt (zu lang, Muster-Match, zu geringe Wichtigkeit o.ae.)',
+            });
+            return;
         }
 
-        res.json({ success: true, id: entry.id });
+        res.json({ success: true, id: result.entryId, status: result.status });
     } catch (error) {
         logger.error('Failed to create memory', error);
         res.status(500).json({ error: 'Failed to create memory' });
@@ -200,41 +201,31 @@ router.post('/:userId/import', async (req, res) => {
         // We will adapt to just creating a raw entry for now, or use memoryManager to process it.
 
         const lines = text.split('\n').filter((l: string) => l.trim().length > 5);
-        let count = 0;
+        const stats = { created: 0, replaced: 0, merged: 0, skipped: 0, blocked: 0 };
 
         for (const line of lines) {
-            // Check if it looks like a list item
             const cleanLine = line.replace(/^-\s*/, '').trim();
-
-            const entry = await prisma.memoryEntry.create({
-                data: {
-                    userId,
-                    type: 'FACT',
-                    content: cleanLine,
-                    importanceScore: 1.0,
-                    createdAt: new Date(),
-                    isActive: true
-                }
+            const res = await memoryGatekeeper.save({
+                userId,
+                type: 'FACT',
+                content: cleanLine,
+                importance: 0.75,
             });
+            stats[res.status] = (stats[res.status] ?? 0) + 1;
 
-            // Generate Embedding
-            try {
-                const { embeddingService } = await import('../services/memory/EmbeddingService');
-                const embedding = await embeddingService.embed(cleanLine);
-                await embeddingService.storeEmbedding(entry.id, embedding);
-
-                // Detect Relations
-                const { relationService } = await import('../services/memory/RelationService');
-                await relationService.detectRelations(entry.id, cleanLine);
-
-            } catch (err) {
-                logger.error(`Failed to process embedding/relations for imported memory ${entry.id}`, err);
+            // Relationen nur fuer neu angelegte Eintraege
+            if (res.status === 'created' && res.entryId) {
+                try {
+                    const { relationService } = await import('../services/memory/RelationService');
+                    await relationService.detectRelations(res.entryId, cleanLine);
+                } catch (err) {
+                    logger.error('relation detect failed', err);
+                }
             }
-
-            count++;
         }
 
-        res.json({ success: true, count });
+        const count = stats.created + stats.replaced + stats.merged;
+        res.json({ success: true, count, stats });
 
     } catch (error) {
         logger.error('Failed to import', error);

@@ -4,6 +4,9 @@ import { shortTermMemoryService } from './ShortTermMemoryService';
 import { embeddingService } from './EmbeddingService';
 import { socketService } from '../socket/SocketService';
 import { logger } from '../../utils/logger';
+import { finalScore, scoreBreakdown } from './MemoryScorer';
+import { classifyIntent, IntentResult } from './IntentClassifier';
+import { MemoryType, MEMORY_TYPE } from './MemoryTypes';
 
 const prisma = new PrismaClient();
 
@@ -69,72 +72,111 @@ export class MemoryManagerService {
     ): Promise<MemoryContext> {
         logger.info(`[MemoryManager] Getting context for user: ${userId}, message: ${userMessage.substring(0, 50)}...`);
 
-        const { isPersonalQuery } = this.detectPersonalQuery(userMessage);
+        // Memory 2.0: Intent-Klassifikation steuert, ob & welche Types wir laden
+        const intent = classifyIntent(userMessage);
+        logger.info(`[MemoryManager] Intent: ${intent.intent} (conf=${intent.confidence.toFixed(2)}, types=[${intent.preferredTypes.join(',')}], skipRetrieval=${intent.skipRetrieval})`);
 
-        // 1. Working Memory (current conversation)
+        // 1. Working Memory (current conversation) - immer geladen
         const working = workingMemoryService.getHistory(sessionId);
 
-        // 2. Short-Term Memory (recent conversations)
+        if (intent.skipRetrieval) {
+            // Smalltalk → kein Memory-Dump
+            return {
+                workingMemory: working,
+                shortTermContext: '',
+                longTermContext: '',
+                totalTokens: this.estimateTokens(working, '', ''),
+            };
+        }
+
+        const { isPersonalQuery } = this.detectPersonalQuery(userMessage);
+
+        // 2. Short-Term Memory (recent conversations) - nur wenn sinnvoll
         const shortTermResults = await shortTermMemoryService.searchRecent(
             userId,
             userMessage,
-            isPersonalQuery ? 5 : 3
+            isPersonalQuery ? 3 : 2,
         );
         const shortTermContext = this.buildShortTermContext(shortTermResults);
 
-        // 3. Long-Term Memory (semantic search via embeddings)
-        const longTermResults = await this.searchLongTerm(
-            userMessage,
-            isPersonalQuery ? 15 : 10,
-            isPersonalQuery ? 0.35 : 0.4,
-            false
-        );
+        // 3. Long-Term Memory via Composite-Score + Type-Routing + Hard-Cap 5
+        const longTermResults = await this.searchLongTermV2(userMessage, intent);
+        const longTermContext = this.buildLongTermContextV2(longTermResults);
 
-        const longTermContext = this.buildLongTermContext(longTermResults);
-
-        logger.info(`[MemoryManager] Retrieved ${longTermResults.length} long-term memories`);
-        longTermResults.forEach((memory, idx) => {
-            logger.debug(`[MemoryManager] Memory ${idx + 1}: ${memory.type} (${memory.similarity?.toFixed(4) || '?'}) - ${memory.content.substring(0, 80)}`);
+        logger.info(`[MemoryManager] Retrieved ${longTermResults.length} long-term memories (cap=5)`);
+        longTermResults.forEach((m: any, idx: number) => {
+            logger.debug(`[MemoryManager] M${idx + 1}: ${m.type} score=${m.finalScore.toFixed(3)} sim=${(m.similarity || 0).toFixed(3)} - ${m.content.substring(0, 70)}`);
         });
 
         return {
             workingMemory: working,
             shortTermContext,
             longTermContext,
-            totalTokens: this.estimateTokens(working, shortTermContext, longTermContext)
+            totalTokens: this.estimateTokens(working, shortTermContext, longTermContext),
         };
     }
 
     /**
-     * Search long-term memory using semantic similarity
+     * Memory 2.0 Retrieval:
+     *   1. Vector-Search (breiter, low threshold) holt Kandidaten
+     *   2. Type-Filter anhand Intent (preferredTypes)
+     *   3. Composite-Score (Importance × 0.5 + Recency × 0.2 + Access × 0.2 + Relevance × 0.1)
+     *   4. Hard-Cap auf TOP 5
      */
-    private async searchLongTerm(query: string, limit: number = 10, threshold: number = 0.4, _boostCriticalTags = false) {
+    private async searchLongTermV2(
+        query: string,
+        intent: IntentResult,
+        hardCap: number = 5,
+    ): Promise<any[]> {
         try {
-            const vectorResults = await embeddingService.searchSimilar(query, limit, threshold);
+            // Kandidaten-Pool: bewusst breit, damit der Composite-Score sortieren kann
+            const vectorResults = await embeddingService.searchSimilar(query, 30, 0.25);
+            if (vectorResults.length === 0) return [];
 
-            // Fetch full memory entries
-            const memories = await Promise.all(
-                vectorResults.map(async (result) => {
-                    const entry = await prisma.memoryEntry.findUnique({
-                        where: { id: result.id },
-                        include: { tags: true }
-                    });
+            const now = new Date();
+            const ids = vectorResults.map(v => v.id);
+            const entries = await prisma.memoryEntry.findMany({
+                where: {
+                    id: { in: ids },
+                    isActive: true,
+                    ...(intent.preferredTypes.length > 0 && intent.intent !== 'GENERIC_QUERY'
+                        ? { type: { in: intent.preferredTypes as string[] } }
+                        : {}),
+                },
+                include: { tags: true },
+            });
 
-                    if (entry && entry.isActive) {
-                        return { ...entry, similarity: result.similarity };
-                    }
-                    return null;
-                })
-            );
+            const bySimilarity = new Map(vectorResults.map(v => [v.id, v.similarity]));
+            const scored = entries.map(e => {
+                const similarity = bySimilarity.get(e.id) ?? 0;
+                const finalSc = finalScore(e as any, { similarity, now });
+                return {
+                    ...e,
+                    similarity,
+                    finalScore: finalSc,
+                    _breakdown: scoreBreakdown(e as any, { similarity, now }),
+                };
+            });
 
-            const filtered = memories
-                .filter(m => m !== null)
-                .sort((a, b) => (b?.similarity || 0) - (a?.similarity || 0));
+            scored.sort((a, b) => b.finalScore - a.finalScore);
+            const top = scored.slice(0, hardCap);
 
-            logger.info(`[MemoryManager] Retrieved ${filtered.length} memories (from ${vectorResults.length} vector results)`);
-            return filtered;
+            // Fallback: falls Type-Filter zu streng war und nichts kam → generisch erneut
+            if (top.length === 0 && intent.intent !== 'GENERIC_QUERY') {
+                return this.searchLongTermV2(query, { ...intent, preferredTypes: [], intent: 'GENERIC_QUERY' }, hardCap);
+            }
+
+            // Nach Abruf: accessCount + lastAccessedAt inkrementieren (async, fire-and-forget)
+            for (const m of top) {
+                prisma.memoryEntry.update({
+                    where: { id: m.id },
+                    data: { accessCount: { increment: 1 }, lastAccessedAt: now },
+                }).catch(() => { /* non-critical */ });
+            }
+
+            return top;
         } catch (error) {
-            logger.error('[MemoryManager] Long-term search failed:', error);
+            logger.error('[MemoryManager] Long-term v2 search failed:', error);
             return [];
         }
     }
@@ -165,31 +207,47 @@ export class MemoryManagerService {
     }
 
     /**
-     * Build context string from long-term memories with improved formatting
+     * Memory 2.0 Context-Builder:
+     *   - Gruppiert nach Type (FACTS / PREFERENCES / CURRENT WORK / RECENT EPISODES / INSTRUCTIONS)
+     *   - Max 5 Eintraege gesamt (kommt vom Retrieval-Cap)
+     *   - Kompakter, weniger noisy Output fuer den System-Prompt
      */
-    private buildLongTermContext(memories: any[]): string {
+    private buildLongTermContextV2(memories: any[]): string {
         if (memories.length === 0) return '';
 
-        const chunks: string[] = [];
-        let tokens = 0;
-
-        // Sort by similarity score
-        const sorted = [...memories].sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
-
-        for (const memory of sorted) {
-            const text = memory.content;
-            const chunk = `- [${memory.type}] ${text}`;
-            const chunkTokens = this.estimateText(chunk);
-
-            if (tokens + chunkTokens > this.TOKEN_BUDGET.longTerm) break;
-
-            chunks.push(chunk);
-            tokens += chunkTokens;
+        const groups: Record<MemoryType, string[]> = {
+            FACT: [],
+            PREFERENCE: [],
+            PROJECT: [],
+            EPISODIC: [],
+            INSTRUCTION: [],
+        };
+        for (const m of memories) {
+            const key = (m.type as MemoryType) in groups ? (m.type as MemoryType) : MEMORY_TYPE.FACT;
+            groups[key].push(`- ${m.content}`);
         }
 
-        return chunks.length > 0
-            ? `Gespeicherte Erinnerungen ueber den Nutzer:\n${chunks.join('\n')}`
-            : '';
+        const labels: Record<MemoryType, string> = {
+            FACT: 'FAKTEN',
+            PREFERENCE: 'VORLIEBEN',
+            PROJECT: 'AKTUELLE PROJEKTE',
+            EPISODIC: 'LETZTE EREIGNISSE',
+            INSTRUCTION: 'SYSTEM-REGELN',
+        };
+
+        const sections: string[] = [];
+        let tokens = 0;
+        for (const type of Object.keys(groups) as MemoryType[]) {
+            if (groups[type].length === 0) continue;
+            const block = `${labels[type]}:\n${groups[type].join('\n')}`;
+            const tks = this.estimateText(block);
+            if (tokens + tks > this.TOKEN_BUDGET.longTerm) break;
+            sections.push(block);
+            tokens += tks;
+        }
+
+        if (sections.length === 0) return '';
+        return sections.join('\n\n');
     }
 
     /**
@@ -367,6 +425,14 @@ export class MemoryManagerService {
                         stats.processed++;
                     } else {
                         stats.skipped++;
+                    }
+
+                    // Memory 2.0: Zusaetzlich EINE episodische Zusammenfassung pro Conversation
+                    try {
+                        const { episodeSummarizer } = await import('./EpisodeSummarizer');
+                        await episodeSummarizer.persistEpisodeForConversation(conversation.id);
+                    } catch (epErr) {
+                        logger.warn(`[MemoryManager] Episode summary failed for ${conversation.id}`, { err: (epErr as Error).message });
                     }
 
                     // Mark as processed

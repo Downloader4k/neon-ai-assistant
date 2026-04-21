@@ -6,7 +6,6 @@
  * response time, and user feedback.
  */
 
-import { prisma } from '../db/prisma';
 import { logger } from '../../utils/logger';
 import { AIProvider, MessageDomain } from './AIRouter';
 
@@ -56,30 +55,18 @@ class RoutingLogger {
             this.recentDecisions.shift();
         }
 
-        // Persist to database
-        try {
-            const dbEntry = await prisma.memoryEntry.create({
-                data: {
-                    userId: decision.userId || 'system',
-                    type: 'INSTRUCTION',
-                    content: `[ROUTING_LOG] domain=${decision.domain} provider=${decision.chosenProvider} complexity=${decision.complexityScore.toFixed(2)} confidence=${decision.selfConfidence.toFixed(2)} responseTime=${decision.responseTimeMs}ms`,
-                    importanceScore: 0.1, // Low importance - just metrics
-                    isActive: true,
-                },
-            });
-
-            entry.id = dbEntry.id;
-            logger.debug('[RoutingLogger] Decision logged', {
-                domain: decision.domain,
-                provider: decision.chosenProvider,
-                complexity: decision.complexityScore,
-            });
-
-            return dbEntry.id;
-        } catch (error) {
-            logger.error('[RoutingLogger] Failed to persist decision', { error });
-            return '';
-        }
+        // Memory 2.0: Routing-Telemetrie gehoert NICHT in memory_entries.
+        // Wir halten nur den In-Memory-Ring-Buffer (recentDecisions) und
+        // schreiben ins Log-File. Fuer persistente Stats spaeter eine
+        // dedizierte Tabelle (routing_decisions) anlegen.
+        const id = `rt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        entry.id = id;
+        logger.debug('[RoutingLogger] Decision logged (in-memory only)', {
+            domain: decision.domain,
+            provider: decision.chosenProvider,
+            complexity: decision.complexityScore,
+        });
+        return id;
     }
 
     /**
@@ -96,21 +83,8 @@ class RoutingLogger {
             decision.feedbackTimestamp = new Date();
         }
 
-        // Update in database
-        try {
-            if (decision?.id) {
-                await prisma.memoryEntry.update({
-                    where: { id: decision.id },
-                    data: {
-                        content: `[ROUTING_LOG] domain=${decision.domain} provider=${decision.chosenProvider} complexity=${decision.complexityScore.toFixed(2)} confidence=${decision.selfConfidence.toFixed(2)} responseTime=${decision.responseTimeMs}ms feedback=${feedback}`,
-                    },
-                });
-            }
-
-            logger.info(`[RoutingLogger] Feedback recorded: ${feedback} for message ${messageId}`);
-        } catch (error) {
-            logger.error('[RoutingLogger] Failed to record feedback', { error });
-        }
+        // Feedback wird nur in-memory gehalten (siehe logDecision).
+        logger.info(`[RoutingLogger] Feedback recorded: ${feedback} for message ${messageId}`);
     }
 
     /**
@@ -163,42 +137,12 @@ class RoutingLogger {
     }
 
     /**
-     * Load historical decisions from database
+     * Load historical decisions from database.
+     * Memory 2.0: Routing-Logs werden nicht mehr persistiert - Stats starten leer.
+     * Fuer persistente Historie spaeter eine eigene Tabelle (routing_decisions) anlegen.
      */
     async loadHistory(): Promise<void> {
-        try {
-            const entries = await prisma.memoryEntry.findMany({
-                where: {
-                    content: { startsWith: '[ROUTING_LOG]' },
-                },
-                orderBy: { createdAt: 'desc' },
-                take: this.maxRecentDecisions,
-            });
-
-            for (const entry of entries.reverse()) {
-                const match = entry.content.match(
-                    /domain=(\w+) provider=(\w+) complexity=([\d.]+) confidence=([\d.]+) responseTime=(\d+)ms(?:\s+feedback=(\w+))?/
-                );
-
-                if (match) {
-                    this.recentDecisions.push({
-                        id: entry.id,
-                        timestamp: entry.createdAt,
-                        userId: entry.userId,
-                        domain: match[1] as MessageDomain,
-                        chosenProvider: match[2] as AIProvider,
-                        complexityScore: parseFloat(match[3]),
-                        selfConfidence: parseFloat(match[4]),
-                        responseTimeMs: parseInt(match[5]),
-                        feedback: match[6] as any,
-                    });
-                }
-            }
-
-            logger.info(`[RoutingLogger] Loaded ${this.recentDecisions.length} historical decisions`);
-        } catch (error) {
-            logger.error('[RoutingLogger] Failed to load history', { error });
-        }
+        logger.info('[RoutingLogger] Memory 2.0: keine persistente Historie (in-memory only)');
     }
 }
 

@@ -54,7 +54,6 @@ export class SimpleInterviewService {
     async markQuestionAnswered(userId: string, questionId: string, answer: string): Promise<void> {
         // Persist to Long-Term Memory
         try {
-            const { embeddingService } = await import('../memory/EmbeddingService');
             const { relationService } = await import('../memory/RelationService');
 
             // Map question ID to memory type
@@ -84,48 +83,38 @@ export class SimpleInterviewService {
                 });
             }
 
-            // Create Entry (without sourceExtractionId to avoid FK violation)
-            const entry = await prisma.memoryEntry.create({
-                data: {
-                    userId,
-                    type: type as any,
-                    content,
-                    importanceScore: 1.0,
-                    isActive: true
-                }
+            // Memory 2.0: Interview-Antworten gehen ueber den Gatekeeper
+            // (Content-Guard, Dedup, Embedding, Tags - alles automatisch)
+            const { memoryGatekeeper } = await import('../memory/MemoryGatekeeper');
+            const saveResult = await memoryGatekeeper.save({
+                userId,
+                type, // bereits gemappt (FACT/PROJECT/PREFERENCE/GOAL)
+                content,
+                summary: content.slice(0, 100),
+                importance: 0.85,
+                tags: [tagName, 'interview'],
+                skipDedup: true, // Interview-Antworten ueberschreiben ja gezielt (s. oben)
             });
 
-            // Add Tag for retrieval
-            try {
-                let tag = await prisma.memoryTag.findUnique({ where: { name: tagName } });
-                if (!tag) {
-                    tag = await prisma.memoryTag.create({ data: { name: tagName } });
-                }
-
-                await prisma.memoryEntry.update({
-                    where: { id: entry.id },
-                    data: {
-                        tags: {
-                            connect: { id: tag.id }
-                        }
-                    }
+            if (saveResult.status === 'blocked' || saveResult.status === 'skipped') {
+                logger.warn('[Interview] Gatekeeper lehnt Antwort ab', {
+                    questionId, reason: saveResult.reason,
                 });
-            } catch (tagError) {
-                logger.warn('Failed to tag interview memory', { error: tagError });
+                return;
             }
 
-            // Generate Embedding (Safe Mode - don't fail save if this fails)
+            const entryId = saveResult.entryId!;
+
+            // Relations fuer neu angelegte Eintraege
             try {
-                const embedding = await embeddingService.embed(content);
-                await embeddingService.storeEmbedding(entry.id, embedding);
-
-                // Detect Relations
-                await relationService.detectRelations(entry.id, content);
+                if (saveResult.status === 'created') {
+                    await relationService.detectRelations(entryId, content);
+                }
             } catch (aiError) {
-                logger.warn(`[Interview] Failed to generate embedding/relations for ${entry.id} (saved anyway)`, aiError);
+                logger.warn(`[Interview] Failed to detect relations for ${entryId} (saved anyway)`, aiError);
             }
 
-            logger.info(`[Interview] Persisted answer for ${questionId} as memory ${entry.id}`);
+            logger.info(`[Interview] Persisted answer for ${questionId} as memory ${entryId} (${saveResult.status})`);
 
         } catch (error) {
             logger.error(`[Interview] Failed to persist answer for ${questionId}`, error);
