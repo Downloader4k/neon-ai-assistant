@@ -80,5 +80,18 @@ debug_*.ts
 # Claude settings
 .claude/
 
+# Playwright MCP cache
+.playwright-mcp/
+
+# Runtime uploads
+backend/uploads/
+
+# Generierte Memory-PDFs (per Script re-generierbar)
+neon-memory.pdf
+neon-gedaechtnis.pdf
+
+# Test-Artefakte
+test-image.png
+
 # Package lock (optional - remove if you want deterministic installs)
 # package-lock.json

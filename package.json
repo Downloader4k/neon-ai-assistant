@@ -28,5 +28,16 @@
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=10.0.0"
+  },
+  "dependencies": {
+    "live2d-widget-model-chitose": "^1.0.5",
+    "live2d-widget-model-epsilon2_1": "^1.0.5",
+    "live2d-widget-model-hijiki": "^1.0.5",
+    "live2d-widget-model-ni-j": "^1.0.5",
+    "live2d-widget-model-nietzsche": "^1.0.5",
+    "live2d-widget-model-nipsilon": "^1.0.5",
+    "live2d-widget-model-nito": "^1.0.5",
+    "live2d-widget-model-tororo": "^1.0.5",
+    "live2d-widget-model-wanko": "^1.0.5"
   }
 }
