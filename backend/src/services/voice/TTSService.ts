@@ -18,6 +18,7 @@ import { Readable } from 'stream';
 import axios from 'axios';
 import { logger } from '../../utils/logger';
 import { customVoicesStore } from './CustomVoicesStore';
+import { voiceSettingsStore } from './VoiceSettingsStore';
 
 export type TTSBackend = 'edge-tts' | 'elevenlabs' | 'piper' | 'browser';
 
@@ -159,6 +160,38 @@ class TTSService {
 
         // Auto-detect backend
         await this.autoDetectBackend();
+
+        // Zuletzt vom User gewaehlte Stimme + Preset wiederherstellen (persistiert)
+        // Laeuft NACH autoDetect, damit wir die gespeicherte Wahl ueber den Default stellen -
+        // ENV TTS_BACKEND bleibt aber dominant (siehe autoDetectBackend).
+        try {
+            const saved = voiceSettingsStore.load();
+            if (saved.backend && !process.env.TTS_BACKEND) {
+                this.config.backend = saved.backend;
+                if (saved.backend === 'edge-tts') this.edgeTTS = null;
+                this.cachedVoices = [];
+            }
+            if (saved.voice) {
+                this.config.voice = saved.voice;
+            }
+            if (saved.preset) {
+                this.config.elevenLabsPreset = saved.preset;
+                if (saved.preset === 'custom' && saved.customSettings) {
+                    this.config.elevenLabsVoiceSettings = { ...saved.customSettings };
+                } else if (saved.preset !== 'custom') {
+                    this.config.elevenLabsVoiceSettings = { ...ELEVENLABS_PRESETS[saved.preset] };
+                }
+            }
+            if (saved.voice || saved.preset || saved.backend) {
+                logger.info('[TTS] Gespeicherte Voice-Settings geladen', {
+                    voice: this.config.voice,
+                    backend: this.config.backend,
+                    preset: this.config.elevenLabsPreset,
+                });
+            }
+        } catch (err) {
+            logger.warn('[TTS] Gespeicherte Settings konnten nicht angewendet werden', { err });
+        }
 
         if (this.config.backend === 'edge-tts') {
             try {
@@ -656,6 +689,11 @@ class TTSService {
                 OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3
             );
         }
+        // Persistieren, damit der Backend-Neustart die gleiche Stimme behaelt
+        voiceSettingsStore.save({
+            voice: this.config.voice,
+            backend: this.config.backend,
+        });
         logger.info(`[TTS] Voice changed to: ${voiceName} (backend: ${this.config.backend})`);
     }
 
@@ -712,6 +750,11 @@ class TTSService {
         } else if (preset !== 'custom') {
             this.config.elevenLabsVoiceSettings = { ...ELEVENLABS_PRESETS[preset] };
         }
+        // Persistieren, damit der Style beim naechsten Start wieder stimmt
+        voiceSettingsStore.save({
+            preset: this.config.elevenLabsPreset,
+            customSettings: preset === 'custom' ? this.config.elevenLabsVoiceSettings : undefined,
+        });
     }
 
     getConfig(): TTSConfig {

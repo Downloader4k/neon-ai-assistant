@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Mic, Volume2, VolumeX, Settings, Sliders, RefreshCw, Square, Repeat, Cpu } from 'lucide-react';
+import { ArrowLeft, Mic, Volume2, VolumeX, Settings, Sliders, RefreshCw, Square, Repeat, Cpu, Send } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { speechRecognitionService } from '../services/SpeechRecognitionService';
 import { TextToSpeechService, textToSpeechService } from '../services/TextToSpeechService';
@@ -61,6 +61,7 @@ export default function VoiceChatPage() {
     const [isListening, setIsListening] = useState(false);
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [interimText, setInterimText] = useState('');
+    const [textInput, setTextInput] = useState(''); // Manuelle Text-Eingabe im Voice-Modus
     const [ttsEnabled, setTtsEnabled] = useState(true);
     const [statusText, setStatusText] = useState('Klicke auf den Orb um zu starten');
     const [backendAvailable, setBackendAvailable] = useState(false);
@@ -686,6 +687,22 @@ export default function VoiceChatPage() {
             startListening();
         }
     }, [isListening, stopListening, startListening]);
+
+    // ===== Text Input — gleicher Pfad wie Voice, Antwort kommt wieder als Sprache zurueck =====
+    const handleSendText = useCallback(() => {
+        const t = textInput.trim();
+        if (!t) return;
+        // Falls Neon gerade spricht -> abwuergen, damit die neue Frage sofort beantwortet wird
+        if (isSpeakingRef.current) {
+            stopSpeaking();
+        }
+        // Falls Mikro gerade aktiv ist -> kurz ausschalten (verhindert STT-Kollision)
+        if (isListening) {
+            stopListening();
+        }
+        setTextInput('');
+        sendStoreMessage(t);
+    }, [textInput, sendStoreMessage, stopSpeaking, isListening, stopListening]);
 
     // Anti-Echo: Sobald Neon spricht oder denkt, Browser-STT ausschalten.
     // Bei Whisper-Modus: MediaRecorder pausieren.
@@ -1418,6 +1435,77 @@ export default function VoiceChatPage() {
                 )}
 
                 <div ref={messagesEndRef} />
+            </div>
+
+            {/* Text-Eingabefeld — schreiben statt sprechen; Antwort kommt trotzdem als Sprache */}
+            <div style={{
+                width: '100%', maxWidth: 600,
+                padding: '12px 16px 0', marginTop: 8,
+                display: 'flex', alignItems: 'flex-end', gap: 8,
+            }}>
+                <div style={{
+                    flex: 1, position: 'relative',
+                    background: 'var(--bg-secondary, rgba(255,255,255,0.03))',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: 18,
+                    transition: 'border-color 0.2s, box-shadow 0.2s',
+                }}>
+                    <textarea
+                        value={textInput}
+                        onChange={(e) => setTextInput(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSendText();
+                            }
+                        }}
+                        placeholder="Schreib Neon etwas — die Antwort kommt als Sprache ..."
+                        rows={1}
+                        style={{
+                            width: '100%', resize: 'none',
+                            minHeight: 44, maxHeight: 140,
+                            padding: '12px 48px 12px 16px',
+                            background: 'transparent', border: 'none', outline: 'none',
+                            color: 'var(--text-primary)',
+                            fontSize: 14, fontFamily: 'inherit', lineHeight: 1.4,
+                        }}
+                        onFocus={(e) => {
+                            const parent = e.currentTarget.parentElement;
+                            if (parent) {
+                                parent.style.borderColor = 'rgba(249,171,0,0.5)';
+                                parent.style.boxShadow = '0 0 0 3px rgba(249,171,0,0.08)';
+                            }
+                        }}
+                        onBlur={(e) => {
+                            const parent = e.currentTarget.parentElement;
+                            if (parent) {
+                                parent.style.borderColor = 'var(--border-subtle)';
+                                parent.style.boxShadow = 'none';
+                            }
+                        }}
+                    />
+                    <button
+                        onClick={handleSendText}
+                        disabled={!textInput.trim() || isProcessing}
+                        aria-label="Nachricht senden"
+                        style={{
+                            position: 'absolute', right: 6, bottom: 6,
+                            width: 34, height: 34, borderRadius: '50%',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: textInput.trim() && !isProcessing
+                                ? 'linear-gradient(135deg, #f9ab00, #d4900a)'
+                                : 'rgba(255,255,255,0.05)',
+                            border: 'none',
+                            color: textInput.trim() && !isProcessing ? '#1a1a2e' : 'var(--text-tertiary)',
+                            cursor: textInput.trim() && !isProcessing ? 'pointer' : 'not-allowed',
+                            transition: 'all 0.15s',
+                            boxShadow: textInput.trim() && !isProcessing
+                                ? '0 2px 10px rgba(249,171,0,0.35)' : 'none',
+                        }}
+                    >
+                        <Send size={16} />
+                    </button>
+                </div>
             </div>
 
             <style>{`
